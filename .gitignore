@@ -1,0 +1,16 @@
+# Logs
+logs
+
+# Dependency directories
+node_modules/
+
+# Optional npm cache directory
+.npm
+
+# dotenv environment variable files
+.env
+**.env
+/build
+.env.test
+package-lock.json
+prisma/migrations

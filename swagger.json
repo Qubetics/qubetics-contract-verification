@@ -1,0 +1,473 @@
+{
+   "openapi": "3.0.2",
+   "info": {
+      "title": "Evm Apis",
+      "description": "Evm service",
+      "version": "1.0.0"
+   },
+   "produces": ["application/json"],
+   "servers": [
+      {
+         "url": "http://localhost:6000",
+         "description": "Development server"
+      } 
+   ],
+   "components": {
+      "schemas":{
+         "Contracts": {
+            "type": "object",
+            "properties": {
+               "contractAddress": {
+                  "type": "string"
+               },
+               "blockHash": {
+                  "type": "string"
+               },
+               "bytecode": {
+                  "type": "string"
+               },
+               "blockNumber": {
+                  "type": "number"
+               },
+               "txhash" : {
+                  "type": "string"
+               },
+               "contractName": {
+                  "type": "string"
+               },
+               "contractType": {
+                  "type": "enum"
+               },
+               "blockTimestamp" : {
+                  "type": "int"
+               },
+               "createdAt": {
+                  "type": "string"
+               },
+               "updatedAt": {
+                  "type": "string"
+               }
+            }
+         },
+         "ContractVerification": {
+            "type": "object",
+            "properties": {
+               "contractAddress": {
+                  "type": "string"
+               },
+               "sourceCode": {
+                  "type": "json"
+               },
+               "codeformat": {
+                  "type": "string"
+               },
+               "contractname": {
+                  "type": "string"
+               },
+               "compilerversion" : {
+                  "type": "string"
+               },
+               "evmVersion "      : {
+                  "type": "string"
+               },
+               "optimizationUsed": {
+                  "type": "boolean"
+               },
+               "verificationType" : {
+                  "type": "int"
+               },
+               "runs":{
+                  "type": "int"
+               },
+               "licenseType": {
+                  "type": "int"
+               },
+               "abi": {
+                  "type": "json"
+               },
+               "errors": {
+                  "type": "json"
+               },
+               "createdAt": {
+                  "type": "string"
+               },
+               "updatedAt": {
+                  "type": "string"
+               }
+            }
+         }
+      }
+   },
+   "paths": {
+      "/evm/contracts/verify": {
+         "post": {
+            "tags": ["EVM"],
+            "summary": "Verify contarct",
+            "requestBody": {
+               "description": "",
+               "content": {
+                  "application/json": {
+                     "schema": {
+                        "type": "object",
+                        "properties": {
+                           "contractaddress": {
+                              "type": "string"
+                           },
+                           "codeformat": {
+                              "type": "string"
+                           },
+                           "compilerversion": {
+                              "type": "string"
+                           },
+                           "files": {
+                              "type": "string"
+                           },
+                           "sourceCode": {
+                              "type": "string"
+                           },
+                           "licenseType": {
+                              "type": "number"
+                           }
+                        },
+                        "example": {
+                           "contractaddress": "abgy6234o",
+                           "codeformat": "solidity-single-file",
+                           "compilerversion":"v0.8.24+commit.e11b9ed9",
+                           "sourceCode":"abc",
+                           "licenseType":1
+                        }
+                     }
+                  }
+               }
+            },
+            "responses": {
+               "200": {
+                  "description": "Contract verification under process, please check after some time.",
+                  "content": {
+                     "application/json": {
+                        "schema": {
+                           "type": "object",
+                           "properties": {
+                              "message": {
+                                 "type": "string"
+                              }
+                           }
+                        }
+                     }
+                  }
+               },
+               "400": {
+                  "description": "Oops! Something went wrong. Please try again."
+               }
+            }
+         }
+      },
+      "/evm/contracts/widget":{
+         "get": {
+            "tags": ["EVM"],
+            "summary": "Get total number of verified contracts",
+            "responses": {
+               "200": {
+                  "description": "Get total number of verified contracts",
+                  "content": {
+                     "application/json": {
+                        "schema": {
+                           "type": "object",
+                           "properties": {
+                              "message": {
+                                 "type": "string"
+                              },
+                              "key": {
+                                 "type": "string"
+                              }
+                           }
+                        }
+                     }
+                  }
+               },
+               "400": {
+                  "description": "Oops! Something went wrong. Please try again."
+               }
+            }
+         }
+
+      },
+      "/evm/compiler/type":{
+         "get": {
+            "tags": ["EVM"],
+            "summary": "Get compiler type",
+            "responses": {
+               "200": {
+                  "description": "Get compiler type",
+                  "content": {
+                     "application/json": {
+                        "schema": {
+                           "type": "object",
+                           "properties": {
+                              "message": {
+                                 "type": "string"
+                              },
+                              "key": {
+                                 "type": "string"
+                              }
+                           }
+                        }
+                     }
+                  }
+               },
+               "400": {
+                  "description": "Oops! Something went wrong. Please try again."
+               }
+            }
+         }
+
+      },
+      "/evm/compiler/license/type":{
+         "get": {
+            "tags": ["EVM"],
+            "summary": "Get license type",
+            "responses": {
+               "200": {
+                  "description": "Get license type",
+                  "content": {
+                     "application/json": {
+                        "schema": {
+                           "type": "object",
+                           "properties": {
+                              "message": {
+                                 "type": "string"
+                              },
+                              "key": {
+                                 "type": "string"
+                              }
+                           }
+                        }
+                     }
+                  }
+               },
+               "400": {
+                  "description": "Oops! Something went wrong. Please try again."
+               }
+            }
+         }
+
+      },
+      "/evm/contracts/detail/{contractAddress}": {
+         "get": {
+            "tags": ["EVM"],
+            "summary": "Get contract detail by contract address",
+            "parameters": [
+               {
+                  "in": "path",
+                  "name": "contractAddress",
+                  "schema": {
+                     "type": "string",
+                     "example": "0xbf705c722e5ed79dfb59093b3e7a22e8eb0fdebc0fa37d185ad710e1ea4fec37"
+                  }
+               }
+            ],
+            "responses": {
+               "200": {
+                  "description": "Success",
+                  "content": {
+                     "application/json": {
+                        "schema": {
+                           "type": "object",
+                           "properties": {
+                              "message": {
+                                 "type": "string"
+                              },
+                              "data": {
+                                 "type": "object"
+                              }
+                           }
+                        }
+                     }
+                  }
+               },
+               "400": {
+                  "description": "Oops! Something went wrong. Please try again."
+               }
+            }
+         }
+      }, 
+      "/evm/contracts/abi/{contractAddress}": {
+         "get": {
+            "tags": ["EVM"],
+            "summary": "Get abi by contract address",
+            "parameters": [
+               {
+                  "in": "path",
+                  "name": "contractAddress",
+                  "schema": {
+                     "type": "string",
+                     "example": "0xbf705c722e5ed79dfb59093b3e7a22e8eb0fdebc0fa37d185ad710e1ea4fec37"
+                  }
+               }
+            ],
+            "responses": {
+               "200": {
+                  "description": "Success",
+                  "content": {
+                     "application/json": {
+                        "schema": {
+                           "type": "object",
+                           "properties": {
+                              "message": {
+                                 "type": "string"
+                              },
+                              "data": {
+                                 "type": "object"
+                              }
+                           }
+                        }
+                     }
+                  }
+               },
+               "400": {
+                  "description": "Oops! Something went wrong. Please try again."
+               }
+            }
+         }
+      },
+      "/evm/contracts/verification/detail/{contractAddress}": {
+         "get": {
+            "tags": ["EVM"],
+            "summary": "Get contact detail by contract address",
+            "parameters": [
+               {
+                  "in": "path",
+                  "name": "contractAddress",
+                  "schema": {
+                     "type": "string",
+                     "example": "0xbf705c722e5ed79dfb59093b3e7a22e8eb0fdebc0fa37d185ad710e1ea4fec37"
+                  }
+               }
+            ],
+            "responses": {
+               "200": {
+                  "description": "Success",
+                  "content": {
+                     "application/json": {
+                        "schema": {
+                           "type": "object",
+                           "properties": {
+                              "message": {
+                                 "type": "string"
+                              },
+                              "data": {
+                                 "type": "object"
+                              }
+                           }
+                        }
+                     }
+                  }
+               },
+               "400": {
+                  "description": "Oops! Something went wrong. Please try again."
+               }
+            }
+         }
+      },
+      "/evm/contracts/user/verified/{walletAddress}": {
+         "get": {
+            "tags": ["EVM"],
+            "summary": "Get detail contract by wallet address",
+            "parameters": [
+               {
+                  "in": "path",
+                  "name": "walletAddress",
+                  "schema": {
+                     "type": "string",
+                     "example": "0xbf705c722e5ed79dfb59093b3e7a22e8eb0fdebc0fa37d185ad710e1ea4fec37"
+                  }
+               },
+               {
+                  "in": "query",
+                  "name": "page",
+                  "schema": {
+                     "type": "string"
+                  }
+               },
+               {
+                  "in": "query",
+                  "name": "limit",
+                  "schema": {
+                     "type": "string"
+                  }
+               }
+            ],
+            "responses": {
+               "200": {
+                  "description": "Success",
+                  "content": {
+                     "application/json": {
+                        "schema": {
+                           "type": "object",
+                           "properties": {
+                              "message": {
+                                 "type": "string"
+                              },
+                              "data": {
+                                 "type": "object"
+                              }
+                           }
+                        }
+                     }
+                  }
+               },
+               "400": {
+                  "description": "Oops! Something went wrong. Please try again."
+               }
+            }
+         }
+      },
+      "/evm/contracts/top": {
+         "get": {
+            "tags": ["EVM"],
+            "summary": "Get top verified contracts",
+            "parameters": [
+            
+               {
+                  "in": "query",
+                  "name": "page",
+                  "schema": {
+                     "type": "string"
+                  }
+               },
+               {
+                  "in": "query",
+                  "name": "limit",
+                  "schema": {
+                     "type": "string"
+                  }
+               }
+            ],
+            "responses": {
+               "200": {
+                  "description": "Success",
+                  "content": {
+                     "application/json": {
+                        "schema": {
+                           "type": "object",
+                           "properties": {
+                              "message": {
+                                 "type": "string"
+                              },
+                              "data": {
+                                 "type": "object"
+                              }
+                           }
+                        }
+                     }
+                  }
+               },
+               "400": {
+                  "description": "Oops! Something went wrong. Please try again."
+               }
+            }
+         }
+      }
+   }
+}
+
