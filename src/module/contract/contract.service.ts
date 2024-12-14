@@ -24,7 +24,9 @@ class ContractService {
 		try {
 			const address = await getAddress(contractAddress);
 			let contract: any = null;
-			const schema = environment.schema ? environment.schema : 'public';
+			// const schema = environment.schema ? environment.schema : 'public';
+			const schema = 'public';
+
 			try {
 				const query = `SELECT bytecode FROM ${schema}."Contracts" WHERE "address" = '${address}'`;
 				const result: any[] =

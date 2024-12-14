@@ -20,7 +20,8 @@ class VerifyService {
 	async verifyMessage(req: any): Promise<IResponse> {
 		try {
 			let creator;
-			const schema = environment.schema ? environment.schema : 'public';
+			// const schema = environment.schema ? environment.schema : 'public';
+			const schema = 'public';
 			const contractAddress = await getAddress(req.address);
 			const contractDetails =
 				await dbService.prisma.contractVerification.findUnique({

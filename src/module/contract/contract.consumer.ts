@@ -259,9 +259,10 @@ class ContractConsumers {
 			) {
 				let bytecodeHash;
 				let contracts: any = [];
-				const schema = environment.schema
-					? environment.schema
-					: 'public';
+				// const schema = environment.schema
+				// 	? environment.schema
+				// 	: 'public';
+				const schema = 'public';
 				try {
 					const query = `SELECT "Contracts"."bytecodeHash" FROM ${schema}."Contracts" WHERE "Contracts"."address" = '${contractAddress}'`;
 					const result: any[] =
