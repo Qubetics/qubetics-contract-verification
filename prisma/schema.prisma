@@ -1,6 +1,6 @@
 generator client {
   provider = "prisma-client-js"
-   binaryTargets = ["native", "linux-musl"]
+  binaryTargets = ["native", "linux-musl", "debian-openssl-1.1.x"]
 }
 
 datasource db {
@@ -8,247 +8,207 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// enum TransactionStatus {
-//   PENDING
-//   SUCCESS
-//   FAILED
-// }
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
 
-// enum TransactionType {
-//   COIN_TRANSFER
-//   CONTRACT_CREATION
-//   CONTRACT_TRANSFER
-// }
+enum TransactionType {
+  COIN_TRANSFER
+  CONTRACT_CREATION
+  CONTRACT_TRANSFER
+}
 
-// enum ContractType {
-//   ERC_20
-//   ERC_721
-//   OTHER
-// }
-// enum Type {
-//   ERC_20
-//   ERC_721
-//   OTHER
-//   NULL
-// }
-// model Users {
-//   id                Int         @id @default(autoincrement())
-//   address           String      @db.VarChar(255) @unique
-//   txn               BigInt      @default(0)
-//   balance           String      @default("0")
-//   createdAt         DateTime    @default(now())
-//   updatedAt         DateTime    @updatedAt
-// }
-// model Balances {
-//   id                Int         @id @default(autoincrement())
-//   address           String      @db.VarChar(255)
-//   balance           String      @default("0")
-//   contractAddress   String      @db.VarChar(255)
-//   createdAt         DateTime    @default(now())
-//   updatedAt         DateTime    @updatedAt
-// }
-// model Blocks {
-//   id                Int         @id @default(autoincrement())
-//   blocknumber       BigInt      @unique
-//   blockhash         String      @db.VarChar(255) @unique
-//   stateRoot         String      @db.VarChar(255)
-//   parentHash        String      @db.VarChar(255) 
-//   transactionsRoot  String    
-//   timestamp         BigInt     
-//   transactionCount  BigInt      @default(0)
-//   nonce             BigInt
-//   miner             String      @db.VarChar(255)
-//   baseFeePerGas     BigInt      
-//   receiptsRoot      String      @db.VarChar(255)
-//   sha3Uncles        String      @db.VarChar(255)
-//   transfer          String      @default("0")
-//   deposit           String      @default("0")
-//   size              BigInt      
-//   gasLimit          BigInt      
-//   gasUsed           BigInt      
-//   createdAt         DateTime    @default(now()) 
-//   updatedAt         DateTime    @updatedAt
+model Users {
+  id        Int      @id @default(autoincrement())
+  address   String   @unique @db.VarChar(255)
+  balance   String   @default("0")
+  txn       BigInt   @default(0)
+  createdAt DateTime @default(now())
+}
 
-//   @@index([blocknumber, blockhash])
-// }
-// model Transactions {
-//   id                   Int                   @id @default(autoincrement())
-//   blockhash            String                @db.VarChar(255)
-//   blocknumber          BigInt                
-//   txhash               String                @unique
-//   contractAddress      String                @default("N/A")
-//   status               TransactionStatus     @default(PENDING)
-//   type                 TransactionType
-//   contractType         Type                  @default(NULL)
-//   input                String                @default("")
-//   timestamp            BigInt  
-//   fromAddress          String                @db.VarChar(255)
-//   toAddress            String                @db.VarChar(255)
-//   gasPrice             BigInt                @default(0)
-//   gas                  BigInt                @default(0)
-//   txFee                String                @db.VarChar(255) @default("0")
-//   value                String                @default("0")
-//   logs                 Logs[]
-//   tokenTransfers       TokenTransfer[]
-//   createdAt            DateTime              @default(now())
-//   updatedAt            DateTime              @updatedAt
+model Blocks {
+  id               Int      @id @default(autoincrement())
+  blocknumber      BigInt   @unique
+  blockhash        String   @unique @db.VarChar(255)
+  stateRoot        String   @db.VarChar(255)
+  parentHash       String   @db.VarChar(255)
+  transactionsRoot String
+  timestamp        DateTime
+  transactionCount BigInt   @default(0)
+  nonce            BigInt
+  miner            String   @db.VarChar(255)
+  baseFeePerGas    BigInt
+  receiptsRoot     String   @db.VarChar(255)
+  sha3Uncles       String   @db.VarChar(255)
+  transfer         String   @default("0")
+  deposit          String   @default("0")
+  size             BigInt
+  gasLimit         BigInt
+  gasUsed          BigInt
+  createdAt        DateTime @default(now())
 
-//   @@index([type ,txhash,contractAddress,fromAddress,toAddress])
-// }
+  @@index([blocknumber, blockhash])
+  @@index([createdAt])
+  @@index([miner]) 
+}
 
-// model CoinTransaferTx {
-//   id                   Int                   @id @default(autoincrement())
-//   blockhash            String                @db.VarChar(255)
-//   blocknumber          BigInt                
-//   txhash               String                @unique
-//   status               TransactionStatus     @default(PENDING)
-//   input                String                 @default("")
-//   fromAddress          String                @db.VarChar(255)
-//   toAddress            String                @db.VarChar(255)
-//   timestamp            BigInt  
-//   gasPrice             BigInt                @default(0)
-//   gas                  BigInt                @default(0)
-//   value                String                @default("0")
-//   txFee                String                @db.VarChar(255) @default("0")
-//   createdAt            DateTime              @default(now())
-//   updatedAt           DateTime               @updatedAt
+model Transactions {
+  id              Int               @id @default(autoincrement())
+  blockhash       String            @db.VarChar(255)
+  blocknumber     BigInt
+  txhash          String            @unique
+  contractAddress String            @default("N/A")
+  status          TransactionStatus @default(PENDING)
+  type            TransactionType
+  timestamp       DateTime
+  fromAddress     String            @db.VarChar(255)
+  toAddress       String            @db.VarChar(255)
+  gasPrice        BigInt            @default(0)
+  gas             BigInt            @default(0)
+  txFee           String            @default("0") @db.VarChar(255)
+  value           String            @default("0")
+  token           String            @default("0")
+  input           String?            @default("") 
+  createdAt       DateTime          @default(now())
+  ContractLogs    ContractLogs[]
 
-//   @@index([txhash,fromAddress,toAddress])
-// }
-// model Contracts {
-//   id               Int          @id @default(autoincrement())  
-//   contractAddress  String       @unique
-//   blockHash        String       @db.VarChar(255)
-//   bytecode         String       @default("")
-//   blockNumber      BigInt
-//   txhash           String        
-//   contractName     String       @default("")
-//   contractType     Type         @default(OTHER)
-//   blockTimestamp   BigInt 
-//   tokens           Tokens[]     
-//   createdAt        DateTime     @default(now())
-//   updatedAt        DateTime     @updatedAt
-// }
-// model Tokens {
-//   id               Int          @id @default(autoincrement())
-//   tokenName        String
-//   tokenSymbol      String        
-//   contractAddress  String       @unique
-//   blockNumber      BigInt  
-//   blockHash        String
-//   decimal          String  
-//   totalSupply      String 
-//   tokenType        Type 
-//   blockTimestamp   BigInt 
-//   creator          String
-//   contract         Contracts    @relation(fields: [contractAddress], references: [contractAddress])
-//   tokenTransfers   TokenTransfer[] 
-//   createdAt        DateTime     @default(now())
-//   updatedAt        DateTime     @updatedAt
-// }
-// model TokenTransfer {
-//   id               Int          @id @default(autoincrement())
-//   fromAddress      String       @db.VarChar(255)
-//   toAddress        String       @db.VarChar(255) 
-//   contractAddress  String       @db.VarChar(255) 
-//   blockNumber      BigInt  
-//   blockHash        String
-//   transactionHash  String 
-//   method           String       @default("")
-//   value            String       @default("")
-//   tokenId          String       @default("")
-//   methodSignature  String       @default("N/A")
-//   hexaMethod       String       @default("N/A")
-//   tokenType        Type 
-//   blockTimestamp   BigInt 
-//   logIndex         BigInt
-//   transaction      Transactions @relation(fields: [transactionHash], references: [txhash])
-//   token            Tokens       @relation(fields: [contractAddress], references: [contractAddress])
-//   createdAt        DateTime     @default(now())
-//   updatedAt        DateTime     @updatedAt
-// }
+  @@index([type, txhash, contractAddress, fromAddress, toAddress])
+}
 
-// model Logs {
-//   id                   Int            @id @default(autoincrement())  
-//   address              String
-//   transactionHash      String        
-//   blockHash            String
-//   blockNumber          BigInt  
-//   data                 String
-//   logIndex             BigInt
-//   transactionIndex     BigInt
-//   blockTimestamp       BigInt 
-//   removed              Boolean          @default(false)
-//   topics               Json             @default("[]")
-//   methodSignature      String           @default("N/A")
-//   method               String           @default("N/A")
-//   transaction          Transactions     @relation(fields: [transactionHash], references: [txhash])
-//   createdAt            DateTime         @default(now())
-//   updatedAt            DateTime         @updatedAt
-// }
-// model CoinmarketInfo {
-//   id                Int          @id @default(autoincrement())
-//   price             String       
-//   volume24h         String
-//   symbol            String       @db.VarChar(255) @default("")
-//   currency          String       @db.VarChar(255) @default("")
-//   createdAt         DateTime     @default(now())
-//   updatedAt         DateTime     @updatedAt
-// }
-// model TxFee {
-//   id                 Int          @id @default(autoincrement())
-//   fee                String       @default("0")
-//   createdAt          DateTime     @default(now())
-//   updatedAt          DateTime     @updatedAt
+model CoinTransaferTx {
+  id          Int               @id @default(autoincrement())
+  blockhash   String            @db.VarChar(255)
+  blocknumber BigInt
+  txhash      String            @unique
+  status      TransactionStatus @default(PENDING)
+  fromAddress String            @db.VarChar(255)
+  toAddress   String            @db.VarChar(255)
+  timestamp   DateTime
+  gasPrice    BigInt            @default(0)
+  gas         BigInt            @default(0)
+  value       String            @default("0")
+  txFee       String            @default("0") @db.VarChar(255)
+  createdAt   DateTime          @default(now())
 
-//   @@index([fee])
-// }
+  @@index([txhash, fromAddress, toAddress])
+}
 
-// model Validator {
-//     id                   Int                       @id @default(autoincrement())
-//     name                 String                    @default("")
-//     walletAddress        String                    @unique
-//     status               String                    @default("")
-//     points               BigInt                    @default(0)
-//     rewards              BigInt                    @default(0)   
-//     uptime               BigInt                    @default(0)
-//     validatorId          Json[]                    @default([])   
-//     stakeAmount          Float                     @default(0)
-//     totalStakeAmount     String                    @default("")
-//     commission           Float                     @default(0)
-//     bondAmount           String                    @default("")
-//     nominators           Json[]                    @default([]) 
-//     validatorInformation Json[]
-//     bondStatus           String                    @default("")
-//     updateEra            String                    @default("")
-//     accountStatus        String                    @default("")
-//     accountType          String                    @default("")
-//     createdAt            DateTime                  @default(now())
-//     updatedAt            DateTime                  @updatedAt 
-// }
+model Contracts {
+  id           Int            @id @default(autoincrement())
+  creator      String         @default("")
+  address      String         @unique
+  blockHash    String         @db.VarChar(255)
+  blockNumber  BigInt
+  bytecode     String         @default("") @db.VarChar(65535)
+  bytecodeHash String         @default("") @db.VarChar(255)
+  txHash       String
+  timestamp    DateTime
+  contractName String
+  contractType String         @default("UNKNOWN")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  Tokens       Tokens?
+  Holders      Holders[]
+  ContractLogs ContractLogs[]
+  // ContractVerification ContractVerification? @relation(fields: [address], references: [contractAddress])
+  ContractVerification ContractVerification? 
+}
 
-// model Nominator {
-//     id                   Int                       @id @default(autoincrement())
-//     name                 String                    @default("")
-//     walletAddress        String                    @unique
-//     status               String                    @default("")
-//     points               BigInt                    @default(0)
-//     rewards              BigInt                    @default(0)   
-//     uptime               BigInt                    @default(0)
-//     validatorId          Json[]                    @default([])   
-//     stakeAmount          Float                     @default(0)
-//     totalStakeAmount     Float                     @default(0)
-//     commission           Float                     @default(0)
-//     bondAmount           Float                     @default(0)
-//     nominatorStatus      Json[]                    @default([])
-//     validatorInformation Json[]
-//     bondStatus           String                    @default("")
-//     updateEra            String                    @default("")
-//     accountStatus        String                    @default("")
-//     accountType          String                    @default("")
-//     createdAt            DateTime                  @default(now())
-//     updatedAt            DateTime                  @updatedAt
-// }
+model Tokens {
+  id              Int      @id @default(autoincrement())
+  creator         String
+  decimal         String
+  totalSupply     String
+  type            String
+  tokenName       String
+  tokenSymbol     String
+  contractAddress String   @unique
+  blockHash       String
+  blockNumber     BigInt
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  contract Contracts? @relation(fields: [contractAddress], references: [address])
+}
+
+model Holders {
+  id              Int    @id @default(autoincrement())
+  address         String
+  contractAddress String
+  tokenBalance    String
+
+  contract Contracts? @relation(fields: [contractAddress], references: [address])
+}
+
+model ContractLogs {
+  id              Int      @id @default(autoincrement())
+  txHash          String   @unique
+  contractAddress String
+  blockHash       String
+  blockNumber     BigInt
+  topics          String[] @default([])
+  logs            String   @default("")
+  methodSignature String
+  method          String   @default("N/A")
+  gasFee          BigInt
+  status          String
+  timestamp       DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  contract     Contracts?    @relation(fields: [contractAddress], references: [address])
+  transactions Transactions? @relation(fields: [txHash], references: [txhash])
+}
+
+model CoinmarketInfo {
+  id               Int      @id @default(autoincrement())
+  price            String
+  volume24h        String
+  volumeChange24h  String
+  percentChange1h  String
+  percentChange24h String
+  percentChange7d  String
+  percentChange30d String
+  symbol           String   @default("") @db.VarChar(255)
+  currency         String   @default("") @db.VarChar(255)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model TxFee {
+  id  Int    @id @default(autoincrement())
+  fee String @default("0")
+
+  @@index([fee])
+}
+
+model Validator {
+  id             Int      @id @default(autoincrement())
+  name           String   @default("")
+  address        String   @unique
+  status         String   @default("")
+  votingPower    Float    @default(0)
+  selfStake      String   @default("")
+  commission     String   @default("")
+  delegatorCount Int
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([selfStake, createdAt, updatedAt])
+}
+
+
+model DecodedLogs {
+  id              Int              @id @default(autoincrement())
+  txHash          String           @unique
+  contractAddress String
+  input           String           @default("")
+  logs            String           @default("")
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+}
 
 model ContractVerification {
   id                      Int          @id @default(autoincrement())  
@@ -272,6 +232,7 @@ model ContractVerification {
   iconUrl                 String       @default("")
   createdAt               DateTime     @default(now())
   updatedAt               DateTime     @updatedAt
+  Contracts              Contracts @relation(fields: [contractAddress], references: [address])
+
+  // Contracts Contracts[]
 }
-
-
