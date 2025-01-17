@@ -132,7 +132,7 @@ export const matchContractDetails = (
 
 			// light matching
 			if (
-				actualByteCodeCompiled === actualDeployedByteCode &&
+				actualByteCodeCompiled === actualDeployedByteCode ||
 				isByteCodeMatched
 			) {
 				matchedContract.contractName = contract.contractName;
