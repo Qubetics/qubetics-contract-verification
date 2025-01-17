@@ -13,7 +13,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      HUAWEI_IMAGE: testnet-qubetics-indexer
+      HUAWEI_IMAGE: testnet-contract-verification
       ARGOCD_REPO: ${{ secrets.ARGOCD_REPO }}
       DEPLOYMENT_PATH: ${{ secrets.DEPLOYMENT_PATH }}
       DEPLOY_KEY: ${{ secrets.DEPLOY_KEY }}
