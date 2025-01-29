@@ -7,7 +7,7 @@ on:
 
 jobs:
   deploy_testnet_contract_verification:
-    uses: ./.github/workflows/testnet-contract-verification-deployment.yml
+    uses: ./.github/workflows/contract-verification-deployment.yaml
     with:
       SWR_ORGANIZATION: testnet-qubetics
       ARGOCD_BRANCH: testnet
