@@ -37,7 +37,7 @@ async function serverListening(): Promise<void> {
 async function closeClientConnections() {
 	console.log('Closing connection');
 	await rabbitMqService.close();
-	await redisService.close();
+	// await redisService.close();
 	await databaseService.close();
 }
 
