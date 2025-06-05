@@ -360,9 +360,12 @@ class ContractService {
 			const topVerifiedContracts =
 				await databaseService.prisma.contractVerification.findMany({
 					where: {
-						verificationType:
-							VERIFICATION_TYPE.PARTIAL_VERIFIED ||
-							VERIFICATION_TYPE.FULLY_VERIFIED,
+						verificationType: {
+							in: [
+								VERIFICATION_TYPE.PARTIAL_VERIFIED,
+								VERIFICATION_TYPE.FULLY_VERIFIED,
+							],
+						},
 					},
 					skip: (data.page - 1) * data.limit,
 					take: data.limit,
@@ -390,9 +393,12 @@ class ContractService {
 			const verifiedContractCount =
 				await databaseService.prisma.contractVerification.count({
 					where: {
-						verificationType:
-							VERIFICATION_TYPE.PARTIAL_VERIFIED ||
-							VERIFICATION_TYPE.FULLY_VERIFIED,
+						verificationType: {
+							in: [
+								VERIFICATION_TYPE.PARTIAL_VERIFIED,
+								VERIFICATION_TYPE.FULLY_VERIFIED,
+							],
+						},
 					},
 				});
 			return new HttpResponse(

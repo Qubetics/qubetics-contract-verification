@@ -263,29 +263,50 @@ class ContractConsumers {
 				// 	? environment.schema
 				// 	: 'public';
 				const schema = 'public';
+				// try {
+				// 	const query = `SELECT "Contracts"."bytecodeHash" FROM ${schema}."Contracts" WHERE "Contracts"."address" = '${contractAddress}'`;
+				// 	const result: any[] =
+				// 		await databaseService.prisma.$queryRawUnsafe(query);
+				// 	if (result.length) bytecodeHash = result[0].bytecodeHash;
+				// 	const conQuery = `SELECT address FROM ${schema}."Contracts" WHERE "Contracts"."bytecodeHash" = '${bytecodeHash}' AND "Contracts"."address" != '${contractAddress}'`;
+				// 	const conResult: any[] =
+				// 		await databaseService.prisma.$queryRawUnsafe(conQuery);
+				// 	if (conResult?.length) contracts = conResult;
+				// } catch (err: any) {
+				// 	try {
+				// 		const query = `SELECT "Contracts"."bytecodeHash" FROM ${schema}."Contracts" WHERE "Contracts"."address" = '${contractAddress}'`;
+				// 		const result: any[] =
+				// 			await databaseService.prisma.$queryRawUnsafe(query);
+				// 		if (result.length)
+				// 			bytecodeHash = result[0].bytecodeHash;
+				// 		const conQuery = `SELECT address FROM ${schema}."Contracts" WHERE "Contracts"."bytecodeHash" = '${bytecodeHash}' AND "Contracts"."address" != '${contractAddress}'`;
+				// 		const conResult: any[] =
+				// 			await databaseService.prisma.$queryRawUnsafe(
+				// 				conQuery,
+				// 			);
+				// 		if (conResult?.length) contracts = conResult;
+				// 	} catch (err: any) {}
+				// }
+
 				try {
 					const query = `SELECT "Contracts"."bytecodeHash" FROM ${schema}."Contracts" WHERE "Contracts"."address" = '${contractAddress}'`;
 					const result: any[] =
 						await databaseService.prisma.$queryRawUnsafe(query);
-					if (result.length) bytecodeHash = result[0].bytecodeHash;
+
+					if (!result.length) {
+						contracts = [];
+					}
+
+					const bytecodeHash = result[0].bytecodeHash;
+
 					const conQuery = `SELECT address FROM ${schema}."Contracts" WHERE "Contracts"."bytecodeHash" = '${bytecodeHash}' AND "Contracts"."address" != '${contractAddress}'`;
 					const conResult: any[] =
 						await databaseService.prisma.$queryRawUnsafe(conQuery);
-					if (conResult?.length) contracts = conResult;
-				} catch (err: any) {
-					try {
-						const query = `SELECT "Contracts"."bytecodeHash" FROM ${schema}."Contracts" WHERE "Contracts"."address" = '${contractAddress}'`;
-						const result: any[] =
-							await databaseService.prisma.$queryRawUnsafe(query);
-						if (result.length)
-							bytecodeHash = result[0].bytecodeHash;
-						const conQuery = `SELECT address FROM ${schema}."Contracts" WHERE "Contracts"."bytecodeHash" = '${bytecodeHash}' AND "Contracts"."address" != '${contractAddress}'`;
-						const conResult: any[] =
-							await databaseService.prisma.$queryRawUnsafe(
-								conQuery,
-							);
-						if (conResult?.length) contracts = conResult;
-					} catch (err: any) {}
+
+					contracts = conResult.length ? conResult : [];
+				} catch (err) {
+					console.error('Error fetching contracts by bytecode:', err);
+					contracts = [];
 				}
 
 				let contractVerification: any =
