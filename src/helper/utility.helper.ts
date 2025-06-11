@@ -1,10 +1,12 @@
-/* eslint-disable */
+import { fork } from 'child_process';
+import path from 'path';
 import util from 'util';
-const { EVM } = require('evm');
-// @ts-ignore
+import { LRUCache } from 'lru-cache';
 import solc from 'solc';
-import { ReturnedError, ReturnedResponse } from '../data classes';
 import { ERROR_MESSAGES, RES_MSG } from '../constant/constants';
+import { ReturnedError, ReturnedResponse } from '../data classes';
+
+const { EVM } = require('evm');
 
 // Function to convert a Buffer to a string using UTF-8 encoding
 export const bufferToString = (
@@ -96,7 +98,7 @@ export const matchContractDetails = (
 	deployedByteCode: string,
 ) => {
 	try {
-		//108 is length of characters of hash
+		// 108 is length of characters of hash
 		const metaDataHash = deployedByteCode
 			.slice(deployedByteCode.length - 108)
 			.trim();
@@ -157,21 +159,70 @@ export const matchContractDetails = (
 	}
 };
 
+const compilerCache = new LRUCache<string, typeof solc>({
+	max: 20, // Max versions to cache
+	ttl: 1000 * 60 * 60, // 1 hour TTL
+});
+
 /**
  * Utility function to create a Solidity compiler instance with loadRemoteVersion functionality.
  * @param version Solidity compiler version to load.
  * @returns Solidity compiler instance with loadRemoteVersion capability.
  */
-export const createSolidityCompiler = async (version: string) => {
+export const createSolidityCompiler = async (
+	version: string,
+	inputJson: any,
+) => {
+	// return new Promise((resolve, reject) => {
+	// 	const child = fork(
+	// 		path.resolve(__dirname, '../workers/compilerChild.ts'),
+	// 	);
+
+	// 	child.send({ version, input: inputJson });
+
+	// 	child.on('message', (output) => {
+	// 		console.log('output : ', output);
+	// 		resolve('');
+
+	// 		// error ? reject(new Error(error)) : resolve(output);
+	// 	});
+
+	// 	child.on('error', (e) => {
+	// 		console.log('error from child : ', e);
+	// 		reject;
+	// 	});
+	// 	child.on('exit', (code) => {
+	// 		if (code !== 0)
+	// 			reject(new Error(`Compiler process exited with code ${code}`));
+	// 	});
+	// });
+
+	// if (cached) return cached;
+
 	// Load the specified Solidity compiler version remotely
-	const compiler: any = await util.promisify(solc.loadRemoteVersion)(version);
+	const compiler: any = await util.promisify(solc.loadRemoteVersion)(
+		version,
+	);
+	compilerCache.set(version, compiler);
+
+	const used: any = process.memoryUsage();
+	console.log('Inside createSolidityCompiler : ');
+	for (const key in used) {
+		console.log(
+			`${key} ${Math.round((used[key] / 1024 / 1024) * 100) / 100} MB`,
+		);
+	}
+
 	if (!compiler) {
 		return new ReturnedResponse(
 			`Failed to load Solidity compiler ${version}.`,
 		);
 	}
+	const output = compiler.compile(inputJson);
+	console.log('output : ', output);
+	
 	// Return the compiler instance
-	return compiler;
+	return output;
 };
 
 export const getOpcodes = async (bytecode: string) => {

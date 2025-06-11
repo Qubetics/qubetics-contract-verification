@@ -24,7 +24,7 @@ export const COMPILATION_TYPE = {
 
 export const FILE_OPTIONS = {
 	FILE_LIMIT: 15,
-	FILE_SIZE_LIMIT: 2,
+	FILE_SIZE_LIMIT: 15,
 };
 
 export const ERROR_MESSAGES = {

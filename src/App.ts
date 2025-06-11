@@ -7,6 +7,7 @@ import registerRoutes from './routes';
 import swaggerUi from 'swagger-ui-express';
 import swaggerDocument from '../swagger.json';
 import limiter from './helper/limiter.helper';
+
 export default class App {
 	public expressApp: express.Application;
 	public httpServer: http.Server;

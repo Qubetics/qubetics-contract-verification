@@ -34,8 +34,11 @@ class ContractConsumers {
 		compilerVersion: string,
 	) => {
 		try {
-			const solc = await createSolidityCompiler(compilerVersion);
-			const compiled = JSON.parse(solc.compile(standardJsonInput));
+			let compile = await createSolidityCompiler(compilerVersion, standardJsonInput);
+			let compiled =  JSON.parse(compile);
+			// console.log("solc.compile(standardJsonInput) : ", solc.compile(standardJsonInput));
+			
+			// let compiled = JSON.parse(solc.compile(standardJsonInput));
 			let compilationErrorsAndWarnings: {
 				errors: any[];
 				warnings: any[];
@@ -78,6 +81,8 @@ class ContractConsumers {
 					contracts.push(contractDetails);
 				}
 			}
+			compiled = null;
+			// solc = null;
 
 			// write the compiled output to standard-out.json file
 			// if compiled again previous changes is over writed
@@ -242,11 +247,11 @@ class ContractConsumers {
 				errors: compileContracts.data.compilationErrorsAndWarnings,
 			};
 
-			await updateRecord(
-				TABLE_NAME.CONTRACT_VERIFICATION,
-				verifiedRecord,
-				{ contractAddress },
-			);
+			// await updateRecord(
+			// 	TABLE_NAME.CONTRACT_VERIFICATION,
+			// 	verifiedRecord,
+			// 	{ contractAddress },
+			// );
 
 			rabbitmqService.enqueueData(
 				RABBITMQ_QUEUES.TRANSACTION_LOGS_DECODING,
@@ -346,6 +351,18 @@ class ContractConsumers {
 					);
 				}
 			}
+			soliditySources = null;
+
+			console.log("Verify Memory ...... ");
+			
+			const used: any = process.memoryUsage();
+			for (let key in used) {
+				console.log(
+					`${key} ${Math.round((used[key] / 1024 / 1024) * 100) / 100} MB`,
+				);
+			}
+
+			// console.log(process.memoryUsage().rss / 1024 / 1024, 'MB');
 
 			return new ReturnedResponse('', verifiedRecord);
 		} catch (err: any) {

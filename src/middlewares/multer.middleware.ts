@@ -10,7 +10,7 @@ export const handleMultipleFileUpload = (
 	req: Request,
 	res: Response,
 	next: NextFunction,
-) => {
+) => {	
 	try {
 		return multipleFileUpload(req, res, (err) => {
 			if (err instanceof multer.MulterError) {

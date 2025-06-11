@@ -1,5 +1,7 @@
 /*eslint-disable*/
+import { BackgroundFetch, LRUCache } from 'lru-cache';
 import Web3Helper from './web3.helper';
+import solc from 'solc';
 const crypto = require('crypto');
 
 export function convertBigIntToNumber(dataVal: any): any {
@@ -58,4 +60,32 @@ export function pagination(page: string, limit: string) {
 	};
 
 	return data;
+}
+
+export default class compilerCache {
+	static instance: null | compilerCache = null;
+	static chache = new LRUCache<string, typeof solc>({
+		max: 20, // Max versions to cache
+		ttl: 1000 * 60 * 60, // 1 hour TTL
+	});
+
+	constructor() {
+		if (compilerCache.instance) {
+			return compilerCache.instance;
+		}
+		compilerCache.instance = new compilerCache();
+		return compilerCache.instance;
+	}
+
+	public set(
+		version: string,
+		compiler: typeof solc  | undefined,
+	) {
+		compilerCache.chache.set(version, compiler);
+	}
+
+	public get(version: string) {
+		const cached = compilerCache.chache.get(version);
+		return cached;
+	}
 }
