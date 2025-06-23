@@ -1,4 +1,4 @@
-name: '[prod] Deploy testnet contract verification'
+name: '[prod] Deploy contract verification'
 
 on: 
   push:
