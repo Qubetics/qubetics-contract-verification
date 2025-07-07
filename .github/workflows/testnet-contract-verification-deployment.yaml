@@ -7,13 +7,13 @@ on:
 
 jobs:
   deploy_testnet_contract_verification:
-    uses: ./.github/workflows/qubetics-contract-verification.yaml
+    uses: ./.github/workflows/testnet-contract-verification-service.yaml
     with:
       SWR_ORGANIZATION: testnet-qubetics
-      ARGOCD_BRANCH: testnet
+      ARGOCD_BRANCH: testnet_v2
       HUAWEI_REGION: 'ap-southeast-3'
       ARGOCD_REPOSITORY: Qubetics/argocd-qubetics
-      DEPLOYMENT_PATH: Contract-verification/contract-verification.yaml
+      DEPLOYMENT_PATH: Contract-verification/contract-verification-deployment.yaml
       HUAWEI_IMAGE: testnet-contract-verification
       DOCKER_USERNAME: ap-southeast-3@BQG9INQF0BKVHSNQOLJG
       ENV: ${{ vars.TESTNET_CONTRACT_VERIFICATION_ENV }}
