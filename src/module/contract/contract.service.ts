@@ -526,6 +526,31 @@ class ContractService {
 			return new HttpResponse(true);
 		}
 	}
+
+	async pendingContracts() {
+		console.info('Running example task at:', new Date().toISOString());
+		try {
+			const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+			console.info('fiveMinutesAgo', fiveMinutesAgo);
+
+			// Perform batch delete operation directly
+			await databaseService.prisma.contractVerification.deleteMany({
+				where: {
+					createdAt: {
+						lt: fiveMinutesAgo,
+					},
+					verificationType: {
+						notIn: [
+							VERIFICATION_TYPE.FULLY_VERIFIED,
+							VERIFICATION_TYPE.PARTIAL_VERIFIED,
+						],
+					},
+				},
+			});
+		} catch (error) {
+			console.error('Error fetching data:', error);
+		}
+	}
 }
 
 export default new ContractService();

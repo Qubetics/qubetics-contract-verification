@@ -10,6 +10,7 @@ import {
 	databaseService,
 } from './service/index';
 import { ERROR_MESSAGES } from './constant/constants';
+import cronHelper from './helper/cron.helper';
 
 function serverError(error: NodeJS.ErrnoException): void {
 	console.log('Error while listning: ', error);
@@ -20,6 +21,7 @@ async function startService() {
 	const databaseClientSetupRes = await databaseService.run();
 	// await redisService.run();
 	const rabbitmqClientSetupRes = await rabbitMqService.run();
+	cronHelper.updatePendingContracts();
 
 	const error = databaseClientSetupRes.error || rabbitmqClientSetupRes.error;
 	if (error) {
