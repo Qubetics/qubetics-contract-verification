@@ -34,10 +34,13 @@ class ContractConsumers {
 		compilerVersion: string,
 	) => {
 		try {
-			let compile = await createSolidityCompiler(compilerVersion, standardJsonInput);
-			let compiled =  JSON.parse(compile);
+			let compiledOutput: string | null = await createSolidityCompiler(
+				compilerVersion,
+				standardJsonInput,
+			);
+			let compiled = JSON.parse(compiledOutput);
 			// console.log("solc.compile(standardJsonInput) : ", solc.compile(standardJsonInput));
-			
+
 			// let compiled = JSON.parse(solc.compile(standardJsonInput));
 			let compilationErrorsAndWarnings: {
 				errors: any[];
@@ -82,6 +85,7 @@ class ContractConsumers {
 				}
 			}
 			compiled = null;
+			compiledOutput = null;
 			// solc = null;
 
 			// write the compiled output to standard-out.json file
@@ -353,8 +357,8 @@ class ContractConsumers {
 			}
 			soliditySources = null;
 
-			console.log("Verify Memory ...... ");
-			
+			console.log('Verify Memory ...... ');
+
 			const used: any = process.memoryUsage();
 			for (let key in used) {
 				console.log(

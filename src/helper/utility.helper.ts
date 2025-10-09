@@ -172,58 +172,59 @@ const compilerCache = new LRUCache<string, typeof solc>({
 export const createSolidityCompiler = async (
 	version: string,
 	inputJson: any,
-) => {
-	// return new Promise((resolve, reject) => {
-	// 	const child = fork(
-	// 		path.resolve(__dirname, '../workers/compilerChild.ts'),
-	// 	);
+): Promise<string> => 
+	 new Promise((resolve, reject) => {
+		const child = fork(
+			path.resolve(__dirname, '../workers/compilerChild.ts'),
+		);
 
-	// 	child.send({ version, input: inputJson });
+		child.send({ version, input: inputJson });
 
-	// 	child.on('message', (output) => {
-	// 		console.log('output : ', output);
-	// 		resolve('');
+		child.on('message', (output : { output : string}) => {
+				resolve(output?.output);
 
-	// 		// error ? reject(new Error(error)) : resolve(output);
-	// 	});
+		});
 
-	// 	child.on('error', (e) => {
-	// 		console.log('error from child : ', e);
-	// 		reject;
-	// 	});
-	// 	child.on('exit', (code) => {
-	// 		if (code !== 0)
-	// 			reject(new Error(`Compiler process exited with code ${code}`));
-	// 	});
-	// });
+		child.on('error', (e) => {
+			console.log('error from child : ', e);
+			reject;
+		});
+		
+		child.on('exit', (code) => {
+		
+			if (code !== 0)
+				reject(new Error(`Compiler process exited with code ${code}`));
+			else console.log('Exiting service..... ');
+		});
+	})
 
 	// if (cached) return cached;
 
 	// Load the specified Solidity compiler version remotely
-	const compiler: any = await util.promisify(solc.loadRemoteVersion)(
-		version,
-	);
-	compilerCache.set(version, compiler);
+	// const compiler: any = await util.promisify(solc.loadRemoteVersion)(
+	// 	version,
+	// );
+	// compilerCache.set(version, compiler);
 
-	const used: any = process.memoryUsage();
-	console.log('Inside createSolidityCompiler : ');
-	for (const key in used) {
-		console.log(
-			`${key} ${Math.round((used[key] / 1024 / 1024) * 100) / 100} MB`,
-		);
-	}
+	// const used: any = process.memoryUsage();
+	// console.log('Inside createSolidityCompiler : ');
+	// for (const key in used) {
+	// 	console.log(
+	// 		`${key} ${Math.round((used[key] / 1024 / 1024) * 100) / 100} MB`,
+	// 	);
+	// }
 
-	if (!compiler) {
-		return new ReturnedResponse(
-			`Failed to load Solidity compiler ${version}.`,
-		);
-	}
-	const output = compiler.compile(inputJson);
-	console.log('output : ', output);
+	// if (!compiler) {
+	// 	return new ReturnedResponse(
+	// 		`Failed to load Solidity compiler ${version}.`,
+	// 	);
+	// }
+	// const output = compiler.compile(inputJson);
+	// console.log('output : ', output);
 	
-	// Return the compiler instance
-	return output;
-};
+	// // Return the compiler instance
+	// return output;
+;
 
 export const getOpcodes = async (bytecode: string) => {
 	try {
