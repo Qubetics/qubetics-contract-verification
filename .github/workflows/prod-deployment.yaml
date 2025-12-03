@@ -13,7 +13,7 @@ jobs:
       ARGOCD_BRANCH: prod
       HUAWEI_REGION: 'ap-southeast-1'
       ARGOCD_REPOSITORY: Qubetics/argocd-qubetics
-      DEPLOYMENT_PATH: Contract-verification/contract-verification-deployment.yaml
+      DEPLOYMENT_PATH: Contract-verification/contract-verification.yaml
       HUAWEI_IMAGE: prod-qubetics-contract-verifications
       DOCKER_USERNAME: ap-southeast-1@HPUAJWWFSLCMD312AZSR
       ENV: ${{ vars.CONTRACT_VERIFICATION_SECRET_ENV }}
