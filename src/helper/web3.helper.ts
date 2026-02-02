@@ -113,7 +113,11 @@ class Web3Helper {
 		try {
 			const deployedByteCode =
 				await this.web3.eth.getCode(contractAddress);
-
+			console.log(
+				'RPC Node Link',
+				`${environment.nodeLink}`,
+				process.env.EVM_TENDERMENT_HTTP_HOST,
+			);
 			if (!deployedByteCode || deployedByteCode === '0x')
 				return new ReturnedResponse(
 					`${RES_MSG.BYTECODE_NOT_FOUND_ON_CHAIN} ${environment.nodeLink}`,
