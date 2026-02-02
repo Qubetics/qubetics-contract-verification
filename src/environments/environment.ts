@@ -42,7 +42,8 @@ class Environment implements IEnvironment {
 		this.setEnvironment(this.env);
 		const port: string | undefined | number = process.env.PORT || 3146;
 		this.port = Number(port);
-		this.nodeLink = <string>process.env.EVM_TENDERMENT_HTTP_HOST;
+		// this.nodeLink = <string>process.env.EVM_TENDERMENT_HTTP_HOST;
+		this.nodeLink = 'https://rpc-testnet.qubetics.work';
 		this.databaseUrl = <string>process.env.DATABASE_URL;
 		this.redisHost = <string>process.env.REDIS_HOST;
 		this.redisPort = Number(process.env.REDIS_PORT);
