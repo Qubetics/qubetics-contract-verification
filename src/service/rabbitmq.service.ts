@@ -91,6 +91,7 @@ class RabbitMQ {
 		this.channel.consume(
 			RABBITMQ_QUEUES.CONTRACT_VERIFICATION_QUEUE,
 			contractConsumer.verifyContractConsumer,
+			{ noAck: false },
 		);
 	}
 
@@ -143,7 +144,7 @@ class RabbitMQ {
 	}
 
 	// Method to assert a queue in RabbitMQ
-	public assertQueue(queue: string, options = { durable: false }) {
+	public assertQueue(queue: string, options = { durable: true }) {
 		try {
 			if (!this.channel)
 				throw new Error(

@@ -139,7 +139,7 @@ export const verifySourceCodeValidation = (
 	const schema = Joi.object({
 		module: Joi.string().optional(),
 		action: Joi.string().optional(),
-		contractaddress: Joi.string().required(),
+		contractaddress: addressValidation('contract address'),
 		sourceCode: Joi.when('codeformat', {
 			is: COMPILATION_TYPE.MULTI_FILE,
 			then: Joi.string().forbidden(),
@@ -157,7 +157,7 @@ export const verifySourceCodeValidation = (
 				'string.pattern.base': VALIDATION_TYPE.COMPILER_VERSION,
 			}),
 		optimizationUsed: Joi.number().valid(0, 1).optional(), //0 = No Optimization, 1 = Optimization used (applicable when codeformat=solidity-single-file)
-		licenseType: Joi.number().integer().min(1).max(14).optional(), //Valid codes 1-14 where 1=No License .. 14=Business Source License 1.1
+		licenseType: Joi.number().integer().min(0).max(13).optional(), //Valid codes 0-13 matching LICENSE_TYPE array indices
 		runs: Joi.number().integer().optional(), //set to 200 as default unless otherwise  (applicable when codeformat=solidity-single-file)
 		evmVersion: Joi.string()
 			.optional()

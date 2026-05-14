@@ -19,41 +19,56 @@ class ContractService {
 		try {
 			const address = await getAddress(contractAddress);
 			let data = { implementation: '', verified: 0 };
-			const proxyABI = [
-				{
-					inputs: [],
-					name: 'implementation',
-					outputs: [
-						{
-							internalType: 'address',
-							name: '',
-							type: 'address',
-						},
-					],
-					stateMutability: 'view',
-					type: 'function',
-				},
-			];
 
-			// Create a contract instance
-			const contractInstance = await web3Helper.getContract(
-				proxyABI,
-				address,
-			);
-			if (contractInstance.data) {
-				try {
+			// EIP-1967 implementation slot used by UUPS and TransparentUpgradeableProxy
+			const EIP1967_IMPL_SLOT =
+				'0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
+
+			// First try EIP-1967 storage slot (covers UUPS / ERC1967Proxy)
+			try {
+				const slotValue = await web3Helper.web3.eth.getStorageAt(
+					address,
+					EIP1967_IMPL_SLOT,
+				);
+				if (slotValue && slotValue !== '0x' + '0'.repeat(64)) {
+					// Last 20 bytes of the 32-byte slot value is the address
 					data.implementation =
-						await contractInstance.data.contract.methods
-							.implementation()
-							.call();
-				} catch (err: any) {
-					return new HttpResponse(
-						false,
-						RES_MSG.CONTRACT,
-						data,
-						STATUS_CODES.SUCCESS,
-					);
+						'0x' + slotValue.slice(-40);
 				}
+			} catch (_) {}
+
+			// Fallback: call implementation() for older transparent proxy pattern
+			if (!data.implementation) {
+				const proxyABI = [
+					{
+						inputs: [],
+						name: 'implementation',
+						outputs: [
+							{
+								internalType: 'address',
+								name: '',
+								type: 'address',
+							},
+						],
+						stateMutability: 'view',
+						type: 'function',
+					},
+				];
+				const contractInstance = await web3Helper.getContract(
+					proxyABI,
+					address,
+				);
+				if (contractInstance.data) {
+					try {
+						data.implementation =
+							await contractInstance.data.contract.methods
+								.implementation()
+								.call();
+					} catch (_) {}
+				}
+			}
+
+			if (data.implementation) {
 				const contract =
 					await databaseService.prisma.contractVerification.findUnique(
 						{

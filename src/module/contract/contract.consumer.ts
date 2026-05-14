@@ -15,7 +15,7 @@ import {
 	filesToCompilerJson,
 	matchContractDetails,
 } from '../../helper/utility.helper';
-import { deleteRecord, updateRecord } from '../../helper/crud.helper';
+import { updateRecord } from '../../helper/crud.helper';
 import { ReturnedError, ReturnedResponse } from '../../data classes';
 import amqp from 'amqplib';
 import logger from '../../lib/logger';
@@ -143,6 +143,10 @@ class ContractConsumers {
 							Number(contractDetails.runs) || 200,
 							contractDetails.evmVersion,
 						).data;
+
+			if (!solidityJsonInput)
+				throw new Error('Failed to build standard JSON input from source');
+
 			const compileContracts = await this.compileContract(
 				solidityJsonInput,
 				contractDetails.compilerversion,
@@ -151,27 +155,30 @@ class ContractConsumers {
 			if (compileContracts.error)
 				throw new Error('Error while compiling');
 
-			const deployedByteCode = await web3Helper.getCode(contractAddress);
+			const deployedByteCodeRes = await web3Helper.getCode(contractAddress);
 
-			const verified: any = matchContractDetails(
+			if (deployedByteCodeRes.error || !deployedByteCodeRes.data?.byteCode)
+				throw new Error(
+					deployedByteCodeRes.formattedMessage ||
+						'Failed to fetch deployed bytecode from chain',
+				);
+
+			const deployedBytecodeHex = deployedByteCodeRes.data.byteCode;
+
+			const verified: any = await matchContractDetails(
 				compileContracts.data.contracts,
-				deployedByteCode.data.byteCode,
+				deployedBytecodeHex,
 			);
 
 			if (contractAddress && verified?.abi) {
-				const code = await web3Helper.getCode(contractAddress);
-				const deployedBytecode = code?.data?.byteCode ?? '';
+				const deployedBytecode = deployedBytecodeHex;
 				const abi =
 					verified?.abi !== undefined &&
 					typeof verified?.abi === 'string'
 						? JSON.parse(verified?.abi)
 						: verified?.abi;
 
-				if (
-					deployedBytecode &&
-					deployedByteCode.data.byteCode !== '0x' &&
-					abi
-				) {
+				if (deployedBytecode && deployedBytecodeHex !== '0x' && abi) {
 					const constructorArgsData = deployedBytecode.slice(10);
 					const constructors = abi.filter(
 						(item: any) => item.type === 'constructor',
@@ -195,7 +202,7 @@ class ContractConsumers {
 								constructorArgs = JSON.parse(
 									JSON.stringify(
 										constructorArgs,
-										(value: any, key: any) => {
+										(key: any, value: any) => {
 											if (typeof value === 'bigint') {
 												return value.toString();
 											}
@@ -350,9 +357,19 @@ class ContractConsumers {
 			return new ReturnedResponse('', verifiedRecord);
 		} catch (err: any) {
 			logger.error(ERROR_MESSAGES.CONTRACT_VERIFICATION, err);
-			await deleteRecord(TABLE_NAME.CONTRACT_VERIFICATION, {
-				contractAddress: data.contractaddress,
-			});
+			if (data.contractaddress) {
+				await updateRecord(
+					TABLE_NAME.CONTRACT_VERIFICATION,
+					{
+						verificationType: VERIFICATION_TYPE.REJECTED,
+						errors: {
+							errors: [{ message: err?.message || String(err) }],
+							warnings: [],
+						},
+					},
+					{ contractAddress: data.contractaddress },
+				);
+			}
 			return new ReturnedResponse(
 				'',
 				null,
