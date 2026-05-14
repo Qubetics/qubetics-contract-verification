@@ -19,7 +19,7 @@ export function convertBigIntToNumber(dataVal: any): any {
 				} else if (value && typeof value === 'object') {
 					finalDataVal[key] = convertBigIntToNumber(value);
 				} else if (typeof value === 'bigint') {
-					finalDataVal[key] = Number(value);
+					finalDataVal[key] = value.toString();
 				} else {
 					finalDataVal[key] = value;
 				}

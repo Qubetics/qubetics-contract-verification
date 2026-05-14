@@ -485,6 +485,7 @@ class ContractService {
 				contractAddress,
 				codeformat: data.codeformat,
 				compilerversion: data.compilerversion,
+				contractname: data.contractname ?? '',
 				optimizationUsed: !!Number(data.optimizationUsed),
 				runs: Number(data.runs) || 200,
 				licenseType: data.licenseType ? Number(data.licenseType) : 0,

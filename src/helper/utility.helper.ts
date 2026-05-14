@@ -91,18 +91,31 @@ export const convertToStandardJson = (
 	}
 };
 
-export const matchContractDetails = (
+// Reads the CBOR length from the last 2 bytes of deployed bytecode and splits it.
+// Solidity appends: [runtime_code][cbor_metadata][2-byte cbor_length]
+const splitBytecodeMetadata = (
+	bytecode: string,
+): { metaDataHash: string; runtimeCode: string } => {
+	if (bytecode.length < 8)
+		return { metaDataHash: '', runtimeCode: bytecode };
+	const cborLength = parseInt(bytecode.slice(-4), 16);
+	const totalMetaHexLen = (cborLength + 2) * 2;
+	if (totalMetaHexLen >= bytecode.length || totalMetaHexLen < 10)
+		return { metaDataHash: '', runtimeCode: bytecode };
+	return {
+		metaDataHash: bytecode.slice(-totalMetaHexLen),
+		runtimeCode: bytecode.slice(0, -totalMetaHexLen),
+	};
+};
+
+export const matchContractDetails = async (
 	contracts: any,
 	deployedByteCode: string,
 ) => {
 	try {
-		//108 is length of characters of hash
-		const metaDataHash = deployedByteCode
-			.slice(deployedByteCode.length - 108)
-			.trim();
-		const actualDeployedByteCode = deployedByteCode
-			.slice(0, deployedByteCode.length - 108)
-			.trim();
+		const { metaDataHash, runtimeCode: actualDeployedByteCode } =
+			splitBytecodeMetadata(deployedByteCode.trim());
+
 		const matchedContract = {
 			contractName: '',
 			verified: false,
@@ -113,18 +126,17 @@ export const matchContractDetails = (
 		};
 		for (const contract of contracts) {
 			const compiledByteCode = contract.deployedByteCode;
-			const metaDataHashCompiled = compiledByteCode
-				.slice(compiledByteCode.length - 108)
-				.trim();
-			const actualByteCodeCompiled = compiledByteCode
-				.slice(0, compiledByteCode.length - 108)
-				.trim();
+			const { metaDataHash: metaDataHashCompiled, runtimeCode: actualByteCodeCompiled } =
+				splitBytecodeMetadata(compiledByteCode.trim());
 
 			if (actualByteCodeCompiled.length !== actualDeployedByteCode.length)
 				continue;
+
 			// opcodes matching
-			const originalOpcodes = getOpcodes(actualDeployedByteCode);
-			const compiledOpcodes = getOpcodes(actualByteCodeCompiled);
+			const originalOpcodesRes = await getOpcodes(actualDeployedByteCode);
+			const compiledOpcodesRes = await getOpcodes(actualByteCodeCompiled);
+			const originalOpcodes: string[] = originalOpcodesRes?.data ?? [];
+			const compiledOpcodes: string[] = compiledOpcodesRes?.data ?? [];
 			const isByteCodeMatched = isArraysAreIdentical(
 				originalOpcodes,
 				compiledOpcodes,
@@ -141,7 +153,7 @@ export const matchContractDetails = (
 				matchedContract.bytecode = contract?.deployedByteCode;
 				matchedContract.creationCode = contract?.bytecode;
 				// match metadata hash
-				if (metaDataHashCompiled === metaDataHash)
+				if (metaDataHash && metaDataHashCompiled === metaDataHash)
 					matchedContract.fullyVerified = true;
 				break;
 			}
