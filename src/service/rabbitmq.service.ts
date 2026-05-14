@@ -144,7 +144,7 @@ class RabbitMQ {
 	}
 
 	// Method to assert a queue in RabbitMQ
-	public assertQueue(queue: string, options = { durable: true }) {
+	public assertQueue(queue: string, options = { durable: false }) {
 		try {
 			if (!this.channel)
 				throw new Error(
