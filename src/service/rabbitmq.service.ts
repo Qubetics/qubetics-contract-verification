@@ -106,7 +106,7 @@ class RabbitMQ {
 		connection: amqp.Connection;
 	}> {
 		return new Promise((resolve, reject) => {
-			amqp.connect(environment.rabbitMq, (err, connection) => {
+			amqp.connect(environment.rabbitMq, (err:any, connection:any) => {
 				// Connecting to RabbitMQ server
 				if (err) {
 					logger.error(ERROR_MESSAGES.RABBITMQ, err); // Logging error if connection fails
@@ -114,7 +114,7 @@ class RabbitMQ {
 					return;
 				}
 
-				connection?.createChannel((error: Error, channel) => {
+				connection?.createChannel((error: Error, channel:any) => {
 					// Creating channel
 					if (error) {
 						logger.error(ERROR_MESSAGES.RABBITMQ, error); // Logging error if channel creation fails
