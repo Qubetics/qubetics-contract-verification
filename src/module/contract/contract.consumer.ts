@@ -14,6 +14,7 @@ import {
 	createSolidityCompiler,
 	filesToCompilerJson,
 	matchContractDetails,
+	stripExplorerHeaders,
 } from '../../helper/utility.helper';
 import { updateRecord } from '../../helper/crud.helper';
 import { ReturnedError, ReturnedResponse } from '../../data classes';
@@ -120,6 +121,7 @@ class ContractConsumers {
 			} else if (
 				contractDetails.codeformat === COMPILATION_TYPE.SINGLE_FILE
 			) {
+
 				soliditySources = filesToCompilerJson(
 					[
 						{
@@ -133,7 +135,7 @@ class ContractConsumers {
 				);
 			}
 
-			const solidityJsonInput =
+			let solidityJsonInput =
 				contractDetails.codeformat ===
 				COMPILATION_TYPE.JSON_STANDARD_INPUT
 					? contractDetails.sourceCode
@@ -143,6 +145,22 @@ class ContractConsumers {
 							Number(contractDetails.runs) || 200,
 							contractDetails.evmVersion,
 						).data;
+
+			if (solidityJsonInput && contractDetails.codeformat === COMPILATION_TYPE.JSON_STANDARD_INPUT) {
+				try {
+					const parsedJson = JSON.parse(solidityJsonInput);
+					if (parsedJson.sources) {
+						for (const key of Object.keys(parsedJson.sources)) {
+							if (parsedJson.sources[key] && typeof parsedJson.sources[key].content === 'string') {
+								parsedJson.sources[key].content = stripExplorerHeaders(parsedJson.sources[key].content);
+							}
+						}
+						solidityJsonInput = JSON.stringify(parsedJson);
+					}
+				} catch (err) {
+					console.error('Error parsing/cleaning standard JSON input:', err);
+				}
+			}
 
 			if (!solidityJsonInput)
 				throw new Error('Failed to build standard JSON input from source');
@@ -164,11 +182,15 @@ class ContractConsumers {
 				);
 
 			const deployedBytecodeHex = deployedByteCodeRes.data.byteCode;
+			console.log("compileContracts.data.contracts---", compileContracts.data.contracts)
+			console.log('###deployedBytecodeHex: ', deployedBytecodeHex);
 
 			const verified: any = await matchContractDetails(
 				compileContracts.data.contracts,
 				deployedBytecodeHex,
 			);
+
+				console.log('verified: ', verified);
 
 			if (contractAddress && verified?.abi) {
 				const deployedBytecode = deployedBytecodeHex;

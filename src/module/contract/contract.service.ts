@@ -1,6 +1,7 @@
 import web3Helper from '../../helper/web3.helper';
 import { convertBigIntToNumber, getAddress } from '../../helper/common.helper';
 import { IResponse, SourceCodePayload } from '../../interfaces/index';
+import { stripExplorerHeaders } from '../../helper/utility.helper';
 import {
 	RES_MSG,
 	STATUS_CODES,
@@ -67,11 +68,28 @@ class ContractService {
 				contractVerificationDetails &&
 				contractVerificationDetails?.verificationType > 0
 			) {
-				data.sourcecode =
+				const rawSource =
 					contractVerificationDetails?.sourceCode !== undefined &&
 					typeof contractVerificationDetails?.sourceCode === 'string'
 						? JSON.parse(contractVerificationDetails?.sourceCode)
 						: contractVerificationDetails?.sourceCode;
+
+				if (rawSource) {
+					if (typeof rawSource === 'string') {
+						data.sourcecode = stripExplorerHeaders(rawSource);
+					} else if (typeof rawSource === 'object') {
+						if (rawSource.sources) {
+							for (const key of Object.keys(rawSource.sources)) {
+								if (rawSource.sources[key] && typeof rawSource.sources[key].content === 'string') {
+									rawSource.sources[key].content = stripExplorerHeaders(rawSource.sources[key].content);
+								}
+							}
+						}
+						data.sourcecode = rawSource;
+					} else {
+						data.sourcecode = rawSource;
+					}
+				}
 			}
 
 			return new HttpResponse(

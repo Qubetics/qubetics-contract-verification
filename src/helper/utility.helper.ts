@@ -16,6 +16,14 @@ export const bufferToString = (
 	return fileContent;
 };
 
+// Function to strip block explorer prepended comments (e.g., BscScan or Etherscan headers) from Solidity source code.
+export const stripExplorerHeaders = (sourceCode: string): string => {
+	if (typeof sourceCode !== 'string') return sourceCode;
+	const explorerHeaderRegex = /\/\*\*[\s\S]*?Submitted for verification at[\s\S]*?\*\/\r?\n?/gi;
+	return sourceCode.replace(explorerHeaderRegex, '');
+};
+
+
 // Function to convert an array of files to a JSON object
 export const filesToCompilerJson = (filesArray: any[], isString = false) => {
 	try {
@@ -27,9 +35,10 @@ export const filesToCompilerJson = (filesArray: any[], isString = false) => {
 				const fileContent: string = isString
 					? file.buffer
 					: bufferToString(Buffer.from(file.buffer.data));
+				const cleanedContent = stripExplorerHeaders(fileContent);
 				const filename = file.originalname;
 				// Add file content to filesJSON with filename as key
-				filesJSON[filename] = { content: fileContent };
+				filesJSON[filename] = { content: cleanedContent };
 			});
 		} else {
 			// Return an error if filesArray is empty
@@ -126,6 +135,8 @@ export const matchContractDetails = async (
 		};
 		for (const contract of contracts) {
 			const compiledByteCode = contract.deployedByteCode;
+					console.log("compiledByteCode#####",compiledByteCode)
+
 			const { metaDataHash: metaDataHashCompiled, runtimeCode: actualByteCodeCompiled } =
 				splitBytecodeMetadata(compiledByteCode.trim());
 
@@ -141,7 +152,7 @@ export const matchContractDetails = async (
 				originalOpcodes,
 				compiledOpcodes,
 			);
-
+			
 			// light matching
 			if (
 				actualByteCodeCompiled === actualDeployedByteCode ||
