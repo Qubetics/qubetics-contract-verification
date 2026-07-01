@@ -67,12 +67,13 @@ class ContractService {
 					},
 				});
 
+			// Never let `bytecode` be `undefined`: JSON.stringify() silently drops
+			// undefined-valued keys, so `res.send` would emit `{}` even though the
+			// in-memory object logged fine — making logs and the wire disagree.
 			const data = {
 				...convertBigIntToNumber(contractVerificationDetails),
-				bytecode: contract.bytecode,
+				bytecode: contract?.bytecode ?? '',
 			};
-
-			console.log(data, "data-getContractDetail")
 			if (
 				contractVerificationDetails &&
 				contractVerificationDetails?.verificationType > 0

@@ -7,8 +7,7 @@ node_modules/
 # Optional npm cache directory
 .npm
 
-# dotenv environment variable files
-.env
-
-
+# NOTE: do NOT ignore `.env` here. The deploy pipeline writes the runtime
+# config into `.env` (echo "${ENV}" >> .env) before `docker build`; ignoring
+# it would strip that config out of the image and leave DATABASE_URL unset.
 

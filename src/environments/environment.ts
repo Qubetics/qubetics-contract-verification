@@ -87,6 +87,17 @@ class Environment implements IEnvironment {
 			default:
 				envPath = path.resolve(rootdir, EnvironmentFile.LOCAL);
 		}
+		// The CI pipeline injects the deploy-time config into `.env`
+		// (`echo "${ENV}" >> .env`), not into the per-env file above. So in
+		// production, if the dedicated `.env.prod` is absent, fall back to `.env`
+		// instead of silently loading nothing (which left DATABASE_URL unset and
+		// pointed the server at the wrong/empty database).
+		if (
+			this.env === Environments.PRODUCTION &&
+			!fs.existsSync(envPath)
+		) {
+			envPath = path.resolve(rootdir, EnvironmentFile.LOCAL);
+		}
 		if (this.env !== Environments.PRODUCTION && !fs.existsSync(envPath)) {
 			throw new Error(ERROR_MESSAGES.ENV_NOT_FOUND);
 		}

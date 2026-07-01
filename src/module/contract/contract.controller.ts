@@ -78,6 +78,8 @@ class ContractController implements Controller {
 		const contracts = await ContractService.getContractDetail(
 			request.params.contractAddress,
 		);
+
+		console.log("getContractDetail of contract",request.params.contractAddress, contracts)
 		return setResponse.setResponse(response, contracts);
 	};
 
