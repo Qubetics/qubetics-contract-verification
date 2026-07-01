@@ -81,25 +81,51 @@ console.log(resolvedImpl, "resolvedImp--l")
 				}
 			}
 
-			// if (data.implementation) {
-				const contract =
-					await databaseService.prisma.contractVerification.findUnique(
-						{
-							where: {
-								contractAddress: data.implementation,
-								verificationType: {
-									in: [
-										VERIFICATION_TYPE.PARTIAL_VERIFIED,
-										VERIFICATION_TYPE.FULLY_VERIFIED,
-									],
-								},
+			// Robust resolution: if the raw slot read missed, fall back to the
+			// EIP-1967/beacon/legacy helper result. Always checksum before use so
+			// it matches the casing stored in the DB (rows are checksummed).
+			if (!data.implementation && resolvedImpl)
+				data.implementation = resolvedImpl;
+			const implAddress = data.implementation
+				? await getAddress(data.implementation)
+				: '';
+			data.implementation = implAddress;
+			console.log(
+				'[checkProxyContract] proxy:',
+				address,
+				'-> implementation:',
+				implAddress || '(none)',
+			);
+
+			// Case-insensitive lookup: data.implementation from the storage slot is
+			// lowercase, but contractVerification rows store the checksummed address,
+			// so an exact findUnique() misses and reports verified=0 even when the
+			// implementation IS verified.
+			const contract = implAddress
+				? await databaseService.prisma.contractVerification.findFirst({
+						where: {
+							contractAddress: {
+								equals: implAddress,
+								mode: 'insensitive',
+							},
+							verificationType: {
+								in: [
+									VERIFICATION_TYPE.PARTIAL_VERIFIED,
+									VERIFICATION_TYPE.FULLY_VERIFIED,
+								],
 							},
 						},
-					);
-				data.verified = contract ? 1 : 0;
-			// }
+					})
+				: null;
+			data.verified = contract ? 1 : 0;
 
-			console.log(contract, "contract---l")
+			console.log(
+				'[checkProxyContract] impl verified lookup ->',
+				'verified:',
+				data.verified,
+				'| foundRecord:',
+				!!contract,
+			)
 
 			return new HttpResponse(
 				false,

@@ -196,6 +196,14 @@ class ContractConsumers {
 					proxyName =
 						(await web3Helper.detectProxyType(contractAddress)) ||
 						'Proxy';
+				console.log(
+					'[verifyContract] PROXY detected:',
+					contractAddress,
+					'| implementation:',
+					implementationAddress,
+					'| resolved proxyName:',
+					proxyName,
+				);
 			}
 
 			const deployedByteCodeRes =
@@ -302,6 +310,19 @@ class ContractConsumers {
 			// Record the resolved implementation so the proxy is linked to its logic contract.
 			if (implementationAddress)
 				verifiedRecord.implementation = implementationAddress;
+
+			console.log(
+				'[verifyContract] SAVING record for',
+				contractAddress,
+				'| contractname:',
+				verifiedRecord.contractname,
+				'| implementation:',
+				verifiedRecord.implementation || '(none)',
+				'| verificationType:',
+				verifiedRecord.verificationType,
+				'| matchedImplName:',
+				verified.contractName,
+			);
 
 			await updateRecord(
 				TABLE_NAME.CONTRACT_VERIFICATION,
