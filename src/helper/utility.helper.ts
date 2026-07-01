@@ -157,7 +157,6 @@ export const matchContractDetails = async (
 ) => {
 	try {
 		const onChain = deployedByteCode.trim().toLowerCase();
-		const { metaDataHash } = splitBytecodeMetadata(onChain);
 
 		const matchedContract = {
 			contractName: '',
@@ -167,6 +166,14 @@ export const matchContractDetails = async (
 			bytecode: '',
 			creationCode: '',
 		};
+		// A full (metadata-inclusive) match is definitive and must win over any
+		// partial match. This matters for proxies: every OpenZeppelin proxy
+		// (CAPSolverPool, CAPIntentTransactions, ...) compiles to the SAME runtime
+		// bytecode and differs only in the trailing CBOR metadata hash. Breaking on
+		// the first partial (runtime-only) match would label the proxy with whichever
+		// proxy contract happens to come first in the list. So scan for a full match
+		// across ALL contracts first, and only fall back to the first partial match.
+		let partialMatch: any = null;
 		for (const contract of contracts) {
 			const compiled = (contract.deployedByteCode || '')
 				.trim()
@@ -182,31 +189,31 @@ export const matchContractDetails = async (
 			const compiledMasked = maskByteRanges(compiled, ranges);
 
 			// Full match: entire runtime bytecode (metadata included) is identical.
+			// This uniquely identifies the exact contract (incl. the right proxy name).
 			if (onChainMasked === compiledMasked) {
 				applyMatch(matchedContract, contract);
 				matchedContract.fullyVerified = true;
-				break;
+				return matchedContract;
 			}
 
 			// Partial match: identical once the trailing CBOR metadata is stripped.
-			// Only the embedded source hash/settings differ — Hardhat treats this as verified.
-			const {
-				metaDataHash: metaDataHashCompiled,
-				runtimeCode: compiledRuntime,
-			} = splitBytecodeMetadata(compiledMasked);
-			const { runtimeCode: onChainRuntime } =
-				splitBytecodeMetadata(onChainMasked);
+			// Only the embedded source hash/settings differ — Hardhat treats this as
+			// verified. Remember the first one but keep scanning for a full match.
+			if (!partialMatch) {
+				const { runtimeCode: compiledRuntime } =
+					splitBytecodeMetadata(compiledMasked);
+				const { runtimeCode: onChainRuntime } =
+					splitBytecodeMetadata(onChainMasked);
 
-			// Exact runtime comparison after masking immutables/libraries — a genuine
-			// difference here is a real mismatch and must NOT be treated as verified.
-			if (onChainRuntime === compiledRuntime) {
-				applyMatch(matchedContract, contract);
-				// match metadata hash
-				if (metaDataHash && metaDataHashCompiled === metaDataHash)
-					matchedContract.fullyVerified = true;
-				break;
+				// Exact runtime comparison after masking immutables/libraries — a genuine
+				// difference here is a real mismatch and must NOT be treated as verified.
+				if (onChainRuntime === compiledRuntime) partialMatch = contract;
 			}
 		}
+
+		// No full match anywhere — accept the first partial match if we found one.
+		// Metadata differs, so this stays partially (not fully) verified.
+		if (partialMatch) applyMatch(matchedContract, partialMatch);
 		return matchedContract;
 	} catch (err: any) {
 		console.log('Error in matchContractDetails: ', err);

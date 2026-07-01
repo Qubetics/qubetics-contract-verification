@@ -174,12 +174,28 @@ class ContractConsumers {
 			) {
 				implementationAddress = resolvedImpl;
 				bytecodeAddress = resolvedImpl;
-				// The submitted source is the implementation's, so its contract
-				// name is NOT the proxy's name. Derive the proxy's own name from
-				// its on-chain bytecode signature so proxy and implementation
-				// records don't collapse to the same name.
-				proxyName =
-					(await web3Helper.detectProxyType(contractAddress)) || 'Proxy';
+				// The implementation match below yields the *implementation's* name,
+				// which is NOT the proxy's name — using it would make the proxy and
+				// implementation records collapse to the same name. A standard-json
+				// submission includes the proxy contract too, so match the proxy's
+				// OWN on-chain bytecode against the compiled contracts to recover its
+				// real name (e.g. CAPSolverPool). All OZ proxies share one runtime and
+				// differ only in metadata, so matchContractDetails' full-match
+				// preference is what distinguishes them.
+				const proxyCodeRes = await web3Helper.getCode(contractAddress);
+				if (!proxyCodeRes.error && proxyCodeRes.data?.byteCode) {
+					const proxyMatch: any = await matchContractDetails(
+						compileContracts.data.contracts,
+						proxyCodeRes.data.byteCode,
+					);
+					proxyName = proxyMatch?.contractName || '';
+				}
+				// Fallback: proxy source wasn't part of the submission → label it by
+				// the proxy type detected from its on-chain bytecode.
+				if (!proxyName)
+					proxyName =
+						(await web3Helper.detectProxyType(contractAddress)) ||
+						'Proxy';
 			}
 
 			const deployedByteCodeRes =
