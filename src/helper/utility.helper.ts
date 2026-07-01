@@ -108,13 +108,56 @@ const splitBytecodeMetadata = (
 	};
 };
 
+// Zero out the given byte ranges (immutables / unlinked library placeholders) in a
+// hex string. On-chain bytecode bakes in immutable values and library addresses that
+// the compiler leaves as zeros/placeholders, so masking both sides lets them compare
+// equal — this is exactly how Hardhat/Sourcify normalise before matching.
+const maskByteRanges = (
+	hex: string,
+	ranges: { start: number; length: number }[],
+): string => {
+	if (!ranges.length) return hex;
+	const chars = hex.split('');
+	for (const { start, length } of ranges) {
+		const from = start * 2;
+		const to = (start + length) * 2;
+		for (let i = from; i < to && i < chars.length; i++) chars[i] = '0';
+	}
+	return chars.join('');
+};
+
+// Flatten solc's immutableReferences + linkReferences maps into a flat list of
+// { start, length } byte ranges (offsets are relative to the deployed bytecode).
+const collectMaskRanges = (
+	immutableReferences: any,
+	linkReferences: any,
+): { start: number; length: number }[] => {
+	const ranges: { start: number; length: number }[] = [];
+	if (immutableReferences && typeof immutableReferences === 'object')
+		for (const key of Object.keys(immutableReferences))
+			for (const r of immutableReferences[key] || []) ranges.push(r);
+	if (linkReferences && typeof linkReferences === 'object')
+		for (const file of Object.keys(linkReferences))
+			for (const lib of Object.keys(linkReferences[file] || {}))
+				for (const r of linkReferences[file][lib] || []) ranges.push(r);
+	return ranges;
+};
+
+const applyMatch = (matched: any, contract: any) => {
+	matched.contractName = contract.contractName;
+	matched.verified = true;
+	matched.abi = JSON.stringify(contract?.abi);
+	matched.bytecode = contract?.deployedByteCode;
+	matched.creationCode = contract?.bytecode;
+};
+
 export const matchContractDetails = async (
 	contracts: any,
 	deployedByteCode: string,
 ) => {
 	try {
-		const { metaDataHash, runtimeCode: actualDeployedByteCode } =
-			splitBytecodeMetadata(deployedByteCode.trim());
+		const onChain = deployedByteCode.trim().toLowerCase();
+		const { metaDataHash } = splitBytecodeMetadata(onChain);
 
 		const matchedContract = {
 			contractName: '',
@@ -125,33 +168,39 @@ export const matchContractDetails = async (
 			creationCode: '',
 		};
 		for (const contract of contracts) {
-			const compiledByteCode = contract.deployedByteCode;
-			const { metaDataHash: metaDataHashCompiled, runtimeCode: actualByteCodeCompiled } =
-				splitBytecodeMetadata(compiledByteCode.trim());
+			const compiled = (contract.deployedByteCode || '')
+				.trim()
+				.toLowerCase();
+			if (!compiled) continue;
 
-			if (actualByteCodeCompiled.length !== actualDeployedByteCode.length)
-				continue;
-
-			// opcodes matching
-			const originalOpcodesRes = await getOpcodes(actualDeployedByteCode);
-			const compiledOpcodesRes = await getOpcodes(actualByteCodeCompiled);
-			const originalOpcodes: string[] = originalOpcodesRes?.data ?? [];
-			const compiledOpcodes: string[] = compiledOpcodesRes?.data ?? [];
-			const isByteCodeMatched = isArraysAreIdentical(
-				originalOpcodes,
-				compiledOpcodes,
+			// Neutralise immutables + library placeholders on both sides before comparing.
+			const ranges = collectMaskRanges(
+				contract.immutableReferences,
+				contract.linkReferences,
 			);
+			const onChainMasked = maskByteRanges(onChain, ranges);
+			const compiledMasked = maskByteRanges(compiled, ranges);
 
-			// light matching
-			if (
-				actualByteCodeCompiled === actualDeployedByteCode ||
-				isByteCodeMatched
-			) {
-				matchedContract.contractName = contract.contractName;
-				matchedContract.verified = true;
-				matchedContract.abi = JSON.stringify(contract?.abi);
-				matchedContract.bytecode = contract?.deployedByteCode;
-				matchedContract.creationCode = contract?.bytecode;
+			// Full match: entire runtime bytecode (metadata included) is identical.
+			if (onChainMasked === compiledMasked) {
+				applyMatch(matchedContract, contract);
+				matchedContract.fullyVerified = true;
+				break;
+			}
+
+			// Partial match: identical once the trailing CBOR metadata is stripped.
+			// Only the embedded source hash/settings differ — Hardhat treats this as verified.
+			const {
+				metaDataHash: metaDataHashCompiled,
+				runtimeCode: compiledRuntime,
+			} = splitBytecodeMetadata(compiledMasked);
+			const { runtimeCode: onChainRuntime } =
+				splitBytecodeMetadata(onChainMasked);
+
+			// Exact runtime comparison after masking immutables/libraries — a genuine
+			// difference here is a real mismatch and must NOT be treated as verified.
+			if (onChainRuntime === compiledRuntime) {
+				applyMatch(matchedContract, contract);
 				// match metadata hash
 				if (metaDataHash && metaDataHashCompiled === metaDataHash)
 					matchedContract.fullyVerified = true;

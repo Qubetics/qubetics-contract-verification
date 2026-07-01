@@ -138,6 +138,80 @@ class Web3Helper {
 		}
 	}
 
+	// Resolve the implementation address of an upgradeable proxy. Covers the
+	// EIP-1967 implementation slot (UUPS / TransparentUpgradeableProxy / ERC1967Proxy),
+	// the EIP-1967 beacon slot (BeaconProxy) and the legacy `implementation()` getter.
+	// Returns null when the address is not a proxy.
+	async getImplementationAddress(
+		contractAddress: string,
+	): Promise<string | null> {
+		const isZeroSlot = (value?: string) => !value || /^0x0*$/.test(value);
+		try {
+			// EIP-1967 implementation slot: keccak256("eip1967.proxy.implementation") - 1
+			const IMPL_SLOT =
+				'0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
+			// EIP-1967 beacon slot: keccak256("eip1967.proxy.beacon") - 1
+			const BEACON_SLOT =
+				'0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50';
+
+			const implSlot = await this.web3.eth.getStorageAt(
+				contractAddress,
+				IMPL_SLOT,
+			);
+			if (!isZeroSlot(implSlot)) return '0x' + implSlot.slice(-40);
+
+			const beaconSlot = await this.web3.eth.getStorageAt(
+				contractAddress,
+				BEACON_SLOT,
+			);
+			if (!isZeroSlot(beaconSlot)) {
+				const impl = await this.callImplementation(
+					'0x' + beaconSlot.slice(-40),
+				);
+				if (impl) return impl;
+			}
+
+			// Legacy transparent proxies expose implementation() on the proxy itself.
+			return await this.callImplementation(contractAddress);
+		} catch (err: any) {
+			console.log('Error in getImplementationAddress: ', err);
+			return null;
+		}
+	}
+
+	// Read-only call to an `implementation()` getter (proxy or beacon).
+	private async callImplementation(
+		address: string,
+	): Promise<string | null> {
+		try {
+			const proxyABI = [
+				{
+					inputs: [],
+					name: 'implementation',
+					outputs: [
+						{
+							internalType: 'address',
+							name: '',
+							type: 'address',
+						},
+					],
+					stateMutability: 'view',
+					type: 'function',
+				},
+			];
+			const contract = new this.web3.eth.Contract(
+				proxyABI as any,
+				address,
+			);
+			const impl: string = await contract.methods
+				.implementation()
+				.call();
+			return impl && !/^0x0*$/.test(impl) ? impl : null;
+		} catch (_) {
+			return null;
+		}
+	}
+
 	// Method to get the code of a contract at a given address
 	async decodeParam(constructorInputs: any, constructorArgsData: any) {
 		try {

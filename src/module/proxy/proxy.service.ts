@@ -17,9 +17,19 @@ class ContractService {
 	 */
 	async checkProxyContract(contractAddress: string): Promise<IResponse> {
 		try {
-			const address = await getAddress(contractAddress);
+			const formattedAddress = web3Helper.getCheckSumAddress(
+							contractAddress
+						);
+												console.log(contractAddress, "contractAddress")
+
+
+						console.log(formattedAddress.data.address, "formattedAddress")
+			const address = await getAddress(formattedAddress.data.address);
 			let data = { implementation: '', verified: 0 };
 
+				const resolvedImpl =			await web3Helper.getImplementationAddress(address);
+			
+console.log(resolvedImpl, "resolvedImp--l")
 			// EIP-1967 implementation slot used by UUPS and TransparentUpgradeableProxy
 			const EIP1967_IMPL_SLOT =
 				'0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
@@ -30,12 +40,15 @@ class ContractService {
 					address,
 					EIP1967_IMPL_SLOT,
 				);
+
+				console.log("slotValue-checkProxyContract", slotValue)
 				if (slotValue && slotValue !== '0x' + '0'.repeat(64)) {
 					// Last 20 bytes of the 32-byte slot value is the address
 					data.implementation =
 						'0x' + slotValue.slice(-40);
 				}
 			} catch (_) {}
+				console.log("data-checkProxyContract", data)
 
 			// Fallback: call implementation() for older transparent proxy pattern
 			if (!data.implementation) {
@@ -68,7 +81,7 @@ class ContractService {
 				}
 			}
 
-			if (data.implementation) {
+			// if (data.implementation) {
 				const contract =
 					await databaseService.prisma.contractVerification.findUnique(
 						{
@@ -84,7 +97,9 @@ class ContractService {
 						},
 					);
 				data.verified = contract ? 1 : 0;
-			}
+			// }
+
+			console.log(contract, "contract---l")
 
 			return new HttpResponse(
 				false,

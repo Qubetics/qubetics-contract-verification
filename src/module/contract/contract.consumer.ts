@@ -67,13 +67,17 @@ class ContractConsumers {
 					const abi = contract.abi;
 					if (abi.length) abis.push(abi);
 					const bytecode = contract.evm.bytecode.object;
-					const deployedByteCode =
-						contract.evm.deployedBytecode.object;
+					const deployedBytecode = contract.evm.deployedBytecode;
+					const deployedByteCode = deployedBytecode.object;
 					const contractDetails = {
 						contractName,
 						abi,
 						deployedByteCode,
 						bytecode,
+						// needed to mask immutables / library links during bytecode matching
+						immutableReferences:
+							deployedBytecode.immutableReferences,
+						linkReferences: deployedBytecode.linkReferences,
 					};
 					contracts.push(contractDetails);
 				}
@@ -155,7 +159,24 @@ class ContractConsumers {
 			if (compileContracts.error)
 				throw new Error('Error while compiling');
 
-			const deployedByteCodeRes = await web3Helper.getCode(contractAddress);
+			// Upgradeable contracts: the submitted source is the logic/implementation
+			// contract, but the given address may be the proxy (whose on-chain code is
+			// just the tiny proxy stub). Resolve the implementation and match the source
+			// against it — this mirrors what hardhat-upgrades does under the hood.
+			let bytecodeAddress = contractAddress;
+			let implementationAddress = '';
+			const resolvedImpl =
+				await web3Helper.getImplementationAddress(contractAddress);
+			if (
+				resolvedImpl &&
+				resolvedImpl.toLowerCase() !== contractAddress.toLowerCase()
+			) {
+				implementationAddress = resolvedImpl;
+				bytecodeAddress = resolvedImpl;
+			}
+
+			const deployedByteCodeRes =
+				await web3Helper.getCode(bytecodeAddress);
 
 			if (deployedByteCodeRes.error || !deployedByteCodeRes.data?.byteCode)
 				throw new Error(
@@ -228,7 +249,7 @@ class ContractConsumers {
 				}
 			}
 
-			let verifiedRecord = {
+			let verifiedRecord: any = {
 				sourceCode: solidityJsonInput,
 				contractname:
 					verified.contractName !== ''
@@ -248,6 +269,10 @@ class ContractConsumers {
 					: '',
 				errors: compileContracts.data.compilationErrorsAndWarnings,
 			};
+
+			// Record the resolved implementation so the proxy is linked to its logic contract.
+			if (implementationAddress)
+				verifiedRecord.implementation = implementationAddress;
 
 			await updateRecord(
 				TABLE_NAME.CONTRACT_VERIFICATION,

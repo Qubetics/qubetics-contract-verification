@@ -63,6 +63,7 @@ class ContractService {
 				bytecode: contract.bytecode,
 			};
 
+			console.log(data, "data-getContractDetail")
 			if (
 				contractVerificationDetails &&
 				contractVerificationDetails?.verificationType > 0
