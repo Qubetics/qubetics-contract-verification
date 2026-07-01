@@ -165,6 +165,7 @@ class ContractConsumers {
 			// against it — this mirrors what hardhat-upgrades does under the hood.
 			let bytecodeAddress = contractAddress;
 			let implementationAddress = '';
+			let proxyName = '';
 			const resolvedImpl =
 				await web3Helper.getImplementationAddress(contractAddress);
 			if (
@@ -173,6 +174,12 @@ class ContractConsumers {
 			) {
 				implementationAddress = resolvedImpl;
 				bytecodeAddress = resolvedImpl;
+				// The submitted source is the implementation's, so its contract
+				// name is NOT the proxy's name. Derive the proxy's own name from
+				// its on-chain bytecode signature so proxy and implementation
+				// records don't collapse to the same name.
+				proxyName =
+					(await web3Helper.detectProxyType(contractAddress)) || 'Proxy';
 			}
 
 			const deployedByteCodeRes =
@@ -252,11 +259,12 @@ class ContractConsumers {
 			let verifiedRecord: any = {
 				sourceCode: solidityJsonInput,
 				// For a proxy the bytecode match runs against the implementation,
-				// so verified.contractName is the *implementation's* name. Keep the
-				// proxy's own submitted name for the proxy record; only fall back to
-				// the matched name for non-proxy contracts.
+				// so verified.contractName is the *implementation's* name — reusing
+				// it (or the submitted name, which is also the implementation's)
+				// would make the proxy and implementation records share a name.
+				// Use the proxy type detected from the proxy's own bytecode instead.
 				contractname: implementationAddress
-					? contractDetails.contractname
+					? proxyName
 					: verified.contractName !== ''
 						? verified.contractName
 						: contractDetails.contractname,

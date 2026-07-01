@@ -179,6 +179,41 @@ class Web3Helper {
 		}
 	}
 
+	// Identify the proxy contract's OWN name from its deployed bytecode.
+	// A proxy's on-chain code embeds the EIP-1967 slot constant(s) it reads
+	// from, so we can name it without having its source. Returns null when the
+	// bytecode carries no recognisable proxy signature.
+	async detectProxyType(proxyAddress: string): Promise<string | null> {
+		try {
+			const code = await this.web3.eth.getCode(proxyAddress);
+			if (!code || code === '0x') return null;
+			const bytecode = code.toLowerCase();
+
+			// EIP-1967 admin slot: keccak256("eip1967.proxy.admin") - 1
+			const ADMIN_SLOT =
+				'b53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103';
+			// EIP-1967 beacon slot: keccak256("eip1967.proxy.beacon") - 1
+			const BEACON_SLOT =
+				'a3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50';
+			// EIP-1967 implementation slot: keccak256("eip1967.proxy.implementation") - 1
+			const IMPL_SLOT =
+				'360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
+
+			// Order matters: TransparentUpgradeableProxy embeds BOTH the admin and
+			// impl slots, so check the admin slot first to avoid labelling it ERC1967.
+			if (bytecode.includes(ADMIN_SLOT))
+				return 'TransparentUpgradeableProxy';
+			if (bytecode.includes(BEACON_SLOT)) return 'BeaconProxy';
+			if (bytecode.includes(IMPL_SLOT)) return 'ERC1967Proxy';
+
+			// Resolved via a legacy implementation() getter but no standard slot.
+			return 'Proxy';
+		} catch (err: any) {
+			console.log('Error in detectProxyType: ', err);
+			return null;
+		}
+	}
+
 	// Read-only call to an `implementation()` getter (proxy or beacon).
 	private async callImplementation(
 		address: string,
