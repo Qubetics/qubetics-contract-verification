@@ -412,18 +412,53 @@ class ContractConsumers {
 					delete contractVerification.implementation;
 					delete contractVerification.iconUrl;
 				}
+				console.log(
+					'[verifyContract] bytecode-hash siblings of',
+					contractAddress,
+					'->',
+					contracts.map((c: any) => c.address),
+				);
 				for (let c = 0; c < contracts.length; c++) {
-					contractVerification.contractAddress = contracts[c].address;
+					const siblingAddress = contracts[c].address;
+
+					// Never copy this contract's identity (name + source + ABI) onto a
+					// proxy that merely shares its resolved bytecodeHash in the explorer's
+					// Contracts table. A proxy has its own stub code and its own name
+					// (e.g. CAPSolverPool); inheriting the implementation's name here is
+					// exactly what made the proxy auto-"verify" as "TreasuryVault".
+					const siblingImpl =
+						await web3Helper.getImplementationAddress(siblingAddress);
+					if (
+						siblingImpl &&
+						siblingImpl.toLowerCase() !==
+							siblingAddress.toLowerCase()
+					) {
+						console.log(
+							'[verifyContract] SKIP propagation to proxy sibling:',
+							siblingAddress,
+							'-> impl',
+							siblingImpl,
+						);
+						continue;
+					}
+
+					contractVerification.contractAddress = siblingAddress;
 					await databaseService.prisma.contractVerification.upsert({
-						where: { contractAddress: contracts[c].address }, // Check if the product with id: 1 exists
+						where: { contractAddress: siblingAddress }, // Check if the product with id: 1 exists
 						update: contractVerification,
 						create: contractVerification,
 					});
+					console.log(
+						'[verifyContract] propagated',
+						contractVerification.contractname,
+						'to sibling',
+						siblingAddress,
+					);
 
 					rabbitmqService.enqueueData(
 						RABBITMQ_QUEUES.TRANSACTION_LOGS_DECODING,
 						JSON.stringify({
-							contractAddress: contracts[c].address,
+							contractAddress: siblingAddress,
 						}),
 					);
 				}
