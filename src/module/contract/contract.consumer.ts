@@ -251,8 +251,13 @@ class ContractConsumers {
 
 			let verifiedRecord: any = {
 				sourceCode: solidityJsonInput,
-				contractname:
-					verified.contractName !== ''
+				// For a proxy the bytecode match runs against the implementation,
+				// so verified.contractName is the *implementation's* name. Keep the
+				// proxy's own submitted name for the proxy record; only fall back to
+				// the matched name for non-proxy contracts.
+				contractname: implementationAddress
+					? contractDetails.contractname
+					: verified.contractName !== ''
 						? verified.contractName
 						: contractDetails.contractname,
 				verificationType: verified?.fullyVerified
