@@ -51,10 +51,19 @@ class ContractService {
 				);
 			}
 
+			// Look up case-insensitively: `address` can be either the checksummed
+			// or the raw casing depending on whether web3 checksumming succeeded in
+			// this process (see getAddress()), and the stored row may use a
+			// different casing. An exact findUnique() therefore matches on one
+			// environment and misses on another, collapsing the response to just
+			// { bytecode }. mode: 'insensitive' makes the result deterministic.
 			const contractVerificationDetails: any =
-				await databaseService.prisma.contractVerification.findUnique({
+				await databaseService.prisma.contractVerification.findFirst({
 					where: {
-						contractAddress: address,
+						contractAddress: {
+							equals: address,
+							mode: 'insensitive',
+						},
 					},
 				});
 
@@ -92,9 +101,12 @@ class ContractService {
 			const address = await getAddress(contractAddress);
 
 			const contractVerificationDetails =
-				await databaseService.prisma.contractVerification.findUnique({
+				await databaseService.prisma.contractVerification.findFirst({
 					where: {
-						contractAddress: address,
+						contractAddress: {
+							equals: address,
+							mode: 'insensitive',
+						},
 					},
 				});
 
@@ -142,9 +154,12 @@ class ContractService {
 			const address: any = await getAddress(contractAddress);
 			let contractImplementation;
 			const contract =
-				await databaseService.prisma.contractVerification.findUnique({
+				await databaseService.prisma.contractVerification.findFirst({
 					where: {
-						contractAddress: address,
+						contractAddress: {
+							equals: address,
+							mode: 'insensitive',
+						},
 						verificationType: {
 							in: [
 								VERIFICATION_TYPE.PARTIAL_VERIFIED,
@@ -171,10 +186,13 @@ class ContractService {
 					contract.implementation,
 				);
 				contractImplementation =
-					await databaseService.prisma.contractVerification.findUnique(
+					await databaseService.prisma.contractVerification.findFirst(
 						{
 							where: {
-								contractAddress: implementationAddress,
+								contractAddress: {
+									equals: implementationAddress,
+									mode: 'insensitive',
+								},
 								verificationType: {
 									in: [
 										VERIFICATION_TYPE.PARTIAL_VERIFIED,
@@ -214,9 +232,12 @@ class ContractService {
 			const address: any = await getAddress(contractAddress);
 
 			const contractDetails =
-				await databaseService.prisma.contractVerification.findUnique({
+				await databaseService.prisma.contractVerification.findFirst({
 					where: {
-						contractAddress: address,
+						contractAddress: {
+							equals: address,
+							mode: 'insensitive',
+						},
 					},
 				});
 
