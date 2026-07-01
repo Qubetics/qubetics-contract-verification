@@ -80,7 +80,7 @@ class ContractController implements Controller {
 		);
 
 		console.log("getContractDetail of contract",request.params.contractAddress, contracts)
-		return setResponse.setResponse(response, contracts);
+		// return setResponse.setResponse(response, contracts);
 	};
 
 	private getAbi = async (request: Request, response: Response) => {
