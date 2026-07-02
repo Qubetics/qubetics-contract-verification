@@ -145,35 +145,67 @@ const collectMaskRanges = (
 
 const applyMatch = (matched: any, contract: any) => {
 	matched.contractName = contract.contractName;
+	matched.fullyQualifiedName = contract.fullyQualifiedName || '';
 	matched.verified = true;
 	matched.abi = JSON.stringify(contract?.abi);
 	matched.bytecode = contract?.deployedByteCode;
 	matched.creationCode = contract?.bytecode;
 };
 
+// Does a compiled contract candidate correspond to the user-declared name?
+// The Etherscan-style API expects a fully-qualified `path:Name` for
+// standard-json submissions, but we also accept a bare `Name`. Comparison is
+// case-insensitive and matches against BOTH the fully-qualified and bare name
+// so `contracts/X.sol:CAPSolverPool`, `CAPSolverPool` all resolve the same.
+const nameMatches = (candidate: any, preferredName: string): boolean => {
+	if (!preferredName) return false;
+	const p = preferredName.trim().toLowerCase();
+	if (!p) return false;
+	const fqn = (candidate.fullyQualifiedName || '').toLowerCase();
+	const bare = (candidate.contractName || '').toLowerCase();
+	const pBare = p.includes(':') ? p.split(':').pop()!.trim() : p;
+	return p === fqn || p === bare || pBare === bare;
+};
+
 export const matchContractDetails = async (
 	contracts: any,
 	deployedByteCode: string,
+	// The user-declared contract name (`path:Name` or bare `Name`). Used ONLY to
+	// disambiguate when the bytecode alone matches more than one compiled contract
+	// (e.g. OpenZeppelin proxies share runtime). It never overrides the bytecode:
+	// a declared name that matches nothing on-chain is ignored, so we can never
+	// assign a name whose bytecode doesn't actually match.
+	preferredName: string = '',
 ) => {
 	try {
 		const onChain = deployedByteCode.trim().toLowerCase();
 
 		const matchedContract = {
 			contractName: '',
+			fullyQualifiedName: '',
 			verified: false,
 			fullyVerified: false,
+			// True when the bytecode matched >1 contract and the declared name did
+			// NOT resolve which one — callers should treat this as "cannot name
+			// confidently" (e.g. skip sibling auto-verification) rather than guess.
+			ambiguous: false,
+			candidates: [] as string[],
 			abi: '',
 			bytecode: '',
 			creationCode: '',
 		};
-		// A full (metadata-inclusive) match is definitive and must win over any
-		// partial match. This matters for proxies: every OpenZeppelin proxy
-		// (CAPSolverPool, CAPIntentTransactions, ...) compiles to the SAME runtime
-		// bytecode and differs only in the trailing CBOR metadata hash. Breaking on
-		// the first partial (runtime-only) match would label the proxy with whichever
-		// proxy contract happens to come first in the list. So scan for a full match
-		// across ALL contracts first, and only fall back to the first partial match.
-		let partialMatch: any = null;
+
+		// Bucket every compiled contract into full vs partial matches instead of
+		// returning on the first hit. A full (metadata-inclusive) match uniquely
+		// identifies the exact contract — including the right proxy name, since
+		// each proxy's trailing CBOR metadata encodes its distinct compilationTarget.
+		// Every OpenZeppelin proxy (CAPSolverPool, CAPIntentTransactions, ...)
+		// compiles to the SAME runtime, so a partial (runtime-only) match is
+		// inherently ambiguous and must be disambiguated deliberately, never by
+		// "first in the list wins".
+		const fullMatches: any[] = [];
+		const partialMatches: any[] = [];
+
 		for (const contract of contracts) {
 			const compiled = (contract.deployedByteCode || '')
 				.trim()
@@ -189,31 +221,49 @@ export const matchContractDetails = async (
 			const compiledMasked = maskByteRanges(compiled, ranges);
 
 			// Full match: entire runtime bytecode (metadata included) is identical.
-			// This uniquely identifies the exact contract (incl. the right proxy name).
 			if (onChainMasked === compiledMasked) {
-				applyMatch(matchedContract, contract);
-				matchedContract.fullyVerified = true;
-				return matchedContract;
+				fullMatches.push(contract);
+				continue;
 			}
 
 			// Partial match: identical once the trailing CBOR metadata is stripped.
-			// Only the embedded source hash/settings differ — Hardhat treats this as
-			// verified. Remember the first one but keep scanning for a full match.
-			if (!partialMatch) {
-				const { runtimeCode: compiledRuntime } =
-					splitBytecodeMetadata(compiledMasked);
-				const { runtimeCode: onChainRuntime } =
-					splitBytecodeMetadata(onChainMasked);
-
-				// Exact runtime comparison after masking immutables/libraries — a genuine
-				// difference here is a real mismatch and must NOT be treated as verified.
-				if (onChainRuntime === compiledRuntime) partialMatch = contract;
-			}
+			// Only the embedded source hash/settings differ — Hardhat/Sourcify treat
+			// this as verified. A genuine runtime difference here is a real mismatch
+			// and must NOT be collected.
+			const { runtimeCode: compiledRuntime } =
+				splitBytecodeMetadata(compiledMasked);
+			const { runtimeCode: onChainRuntime } =
+				splitBytecodeMetadata(onChainMasked);
+			if (onChainRuntime === compiledRuntime) partialMatches.push(contract);
 		}
 
-		// No full match anywhere — accept the first partial match if we found one.
-		// Metadata differs, so this stays partially (not fully) verified.
-		if (partialMatch) applyMatch(matchedContract, partialMatch);
+		// Full matches are definitive and win over partials. Only fall back to the
+		// partial pool when there is no full match at all.
+		const pool = fullMatches.length ? fullMatches : partialMatches;
+		const isFull = fullMatches.length > 0;
+		if (!pool.length) return matchedContract; // genuine no-match → rejected
+
+		matchedContract.candidates = pool.map(
+			(c: any) => c.fullyQualifiedName || c.contractName,
+		);
+
+		let chosen: any;
+		if (pool.length === 1) {
+			// Unambiguous: exactly one contract matches the bytecode.
+			chosen = pool[0];
+		} else {
+			// Ambiguous by bytecode (the shared-runtime proxy case). Resolve it with
+			// the user-declared name, but only if that name is one of the matching
+			// candidates. Otherwise flag ambiguity so callers don't mislabel.
+			const preferred = pool.find((c: any) =>
+				nameMatches(c, preferredName),
+			);
+			chosen = preferred || pool[0];
+			matchedContract.ambiguous = !preferred;
+		}
+
+		applyMatch(matchedContract, chosen);
+		matchedContract.fullyVerified = isFull;
 		return matchedContract;
 	} catch (err: any) {
 		console.log('Error in matchContractDetails: ', err);

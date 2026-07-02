@@ -71,6 +71,10 @@ class ContractConsumers {
 					const deployedByteCode = deployedBytecode.object;
 					const contractDetails = {
 						contractName,
+						// `key` is the source path (e.g. contracts/TreasuryVaultProxy.sol),
+						// so this is the Etherscan-style fully-qualified id used to
+						// disambiguate contracts that share runtime bytecode (OZ proxies).
+						fullyQualifiedName: `${key}:${contractName}`,
 						abi,
 						deployedByteCode,
 						bytecode,
@@ -163,6 +167,11 @@ class ContractConsumers {
 			// contract, but the given address may be the proxy (whose on-chain code is
 			// just the tiny proxy stub). Resolve the implementation and match the source
 			// against it — this mirrors what hardhat-upgrades does under the hood.
+			// The user-declared contract name (Etherscan-style `path:Name` or bare
+			// `Name`). Authoritative for disambiguating contracts that share runtime
+			// bytecode (OZ proxies); ignored when it doesn't match the on-chain code.
+			const submittedName = (contractDetails.contractname || '').trim();
+
 			let bytecodeAddress = contractAddress;
 			let implementationAddress = '';
 			let proxyName = '';
@@ -184,9 +193,13 @@ class ContractConsumers {
 				// preference is what distinguishes them.
 				const proxyCodeRes = await web3Helper.getCode(contractAddress);
 				if (!proxyCodeRes.error && proxyCodeRes.data?.byteCode) {
+					// Pass the declared name: all OZ proxies share runtime, so this is
+					// what deterministically resolves CAPSolverPool vs CAPIntentTransactions
+					// vs CAPSolverRegistration when the metadata doesn't full-match.
 					const proxyMatch: any = await matchContractDetails(
 						compileContracts.data.contracts,
 						proxyCodeRes.data.byteCode,
+						submittedName,
 					);
 					proxyName = proxyMatch?.contractName || '';
 				}
@@ -217,9 +230,14 @@ class ContractConsumers {
 
 			const deployedBytecodeHex = deployedByteCodeRes.data.byteCode;
 
+			// For a proxy the primary match runs against the IMPLEMENTATION bytecode,
+			// whose runtime is unique — no disambiguation needed, and the declared name
+			// belongs to the proxy (resolved above), not the implementation. For a
+			// non-proxy the declared name disambiguates any shared-runtime siblings.
 			const verified: any = await matchContractDetails(
 				compileContracts.data.contracts,
 				deployedBytecodeHex,
+				implementationAddress ? '' : submittedName,
 			);
 
 			if (contractAddress && verified?.abi) {
@@ -450,13 +468,22 @@ class ContractConsumers {
 
 					// Can't identify the sibling from this submission's sources → do NOT
 					// clobber it with another contract's identity. Leave it untouched.
+					// `ambiguous` means the bytecode matched >1 compiled contract (shared
+					// proxy runtime) and there is no declared name here to break the tie,
+					// so naming it would be a guess — skip and let it be verified by its
+					// own explicit submission instead.
 					if (
 						!siblingMatch?.contractName ||
+						siblingMatch?.ambiguous ||
 						siblingType < VERIFICATION_TYPE.PARTIAL_VERIFIED
 					) {
 						console.log(
-							'[verifyContract] SKIP sibling (not identifiable from submitted sources):',
+							'[verifyContract] SKIP sibling (not uniquely identifiable from submitted sources):',
 							siblingAddress,
+							'| ambiguous:',
+							!!siblingMatch?.ambiguous,
+							'| candidates:',
+							siblingMatch?.candidates,
 						);
 						continue;
 					}
