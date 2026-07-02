@@ -446,6 +446,31 @@ class ContractConsumers {
 					// implementation: it must keep its own name (e.g. CAPIntentTransactions)
 					// and its own ABI. Blindly copying is what made proxies auto-verify as
 					// the implementation with the wrong name.
+					// NEVER auto-verify a proxy from an implementation's sibling sweep.
+					// A proxy is not a redeployment of this implementation — it has its
+					// own identity (its own name + its own implementation link) and every
+					// proxy shares the same runtime, so a nameless sibling match cannot
+					// reliably name it (wrong name / blank). Proxies must be verified by
+					// their own explicit submission, which carries the declared name and
+					// matches the proxy's own bytecode. Skipping here also stops a later
+					// implementation re-verification from clobbering a correct, explicitly
+					// verified proxy record.
+					const siblingImpl =
+						await web3Helper.getImplementationAddress(siblingAddress);
+					if (
+						siblingImpl &&
+						siblingImpl.toLowerCase() !==
+							siblingAddress.toLowerCase()
+					) {
+						console.log(
+							'[verifyContract] SKIP sibling (is a proxy — must be verified explicitly):',
+							siblingAddress,
+							'| implementation:',
+							siblingImpl,
+						);
+						continue;
+					}
+
 					const siblingCodeRes =
 						await web3Helper.getCode(siblingAddress);
 					if (siblingCodeRes.error || !siblingCodeRes.data?.byteCode) {
@@ -488,14 +513,9 @@ class ContractConsumers {
 						continue;
 					}
 
-					// A sibling that is itself a proxy gets linked to its implementation.
-					const siblingImpl =
-						await web3Helper.getImplementationAddress(siblingAddress);
-					const siblingIsProxy =
-						!!siblingImpl &&
-						siblingImpl.toLowerCase() !==
-							siblingAddress.toLowerCase();
-
+					// Siblings reaching this point are guaranteed non-proxy (proxies were
+					// skipped above), so this is a genuine identical-bytecode redeployment
+					// of the same contract — it carries no implementation link of its own.
 					const siblingRecord: any = {
 						...contractVerification,
 						contractAddress: siblingAddress,
@@ -504,7 +524,7 @@ class ContractConsumers {
 						byteCode: siblingMatch.bytecode,
 						creationCode: siblingMatch.creationCode,
 						verificationType: siblingType,
-						implementation: siblingIsProxy ? siblingImpl : null,
+						implementation: null,
 					};
 
 					await databaseService.prisma.contractVerification.upsert({
@@ -513,13 +533,10 @@ class ContractConsumers {
 						create: siblingRecord,
 					});
 					console.log(
-						'[verifyContract] auto-verified sibling',
+						'[verifyContract] auto-verified sibling (non-proxy)',
 						siblingAddress,
 						'as',
 						siblingRecord.contractname,
-						siblingIsProxy
-							? `(proxy -> ${siblingImpl})`
-							: '(non-proxy)',
 					);
 
 					rabbitmqService.enqueueData(
