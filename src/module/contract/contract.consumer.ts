@@ -418,41 +418,81 @@ class ContractConsumers {
 					'->',
 					contracts.map((c: any) => c.address),
 				);
-				for (let c = 0; c < contracts.length; c++) {
+				for (let c = 0; contractVerification && c < contracts.length; c++) {
 					const siblingAddress = contracts[c].address;
 
-					// Never copy this contract's identity (name + source + ABI) onto a
-					// proxy that merely shares its resolved bytecodeHash in the explorer's
-					// Contracts table. A proxy has its own stub code and its own name
-					// (e.g. CAPSolverPool); inheriting the implementation's name here is
-					// exactly what made the proxy auto-"verify" as "TreasuryVault".
-					const siblingImpl =
-						await web3Helper.getImplementationAddress(siblingAddress);
-					if (
-						siblingImpl &&
-						siblingImpl.toLowerCase() !==
-							siblingAddress.toLowerCase()
-					) {
+					// SAME logic as the primary contract: derive each sibling's identity
+					// from ITS OWN on-chain bytecode — never copy the primary record's
+					// name/ABI. Siblings share a bytecodeHash in the explorer's Contracts
+					// table, but a proxy indexed under its implementation's hash is NOT the
+					// implementation: it must keep its own name (e.g. CAPIntentTransactions)
+					// and its own ABI. Blindly copying is what made proxies auto-verify as
+					// the implementation with the wrong name.
+					const siblingCodeRes =
+						await web3Helper.getCode(siblingAddress);
+					if (siblingCodeRes.error || !siblingCodeRes.data?.byteCode) {
 						console.log(
-							'[verifyContract] SKIP propagation to proxy sibling:',
+							'[verifyContract] SKIP sibling (no on-chain bytecode):',
 							siblingAddress,
-							'-> impl',
-							siblingImpl,
 						);
 						continue;
 					}
 
-					contractVerification.contractAddress = siblingAddress;
+					const siblingMatch: any = await matchContractDetails(
+						compileContracts.data.contracts,
+						siblingCodeRes.data.byteCode,
+					);
+					const siblingType = siblingMatch?.fullyVerified
+						? VERIFICATION_TYPE.FULLY_VERIFIED
+						: siblingMatch?.verified
+							? VERIFICATION_TYPE.PARTIAL_VERIFIED
+							: VERIFICATION_TYPE.REJECTED;
+
+					// Can't identify the sibling from this submission's sources → do NOT
+					// clobber it with another contract's identity. Leave it untouched.
+					if (
+						!siblingMatch?.contractName ||
+						siblingType < VERIFICATION_TYPE.PARTIAL_VERIFIED
+					) {
+						console.log(
+							'[verifyContract] SKIP sibling (not identifiable from submitted sources):',
+							siblingAddress,
+						);
+						continue;
+					}
+
+					// A sibling that is itself a proxy gets linked to its implementation.
+					const siblingImpl =
+						await web3Helper.getImplementationAddress(siblingAddress);
+					const siblingIsProxy =
+						!!siblingImpl &&
+						siblingImpl.toLowerCase() !==
+							siblingAddress.toLowerCase();
+
+					const siblingRecord: any = {
+						...contractVerification,
+						contractAddress: siblingAddress,
+						contractname: siblingMatch.contractName,
+						abi: siblingMatch.abi,
+						byteCode: siblingMatch.bytecode,
+						creationCode: siblingMatch.creationCode,
+						verificationType: siblingType,
+						implementation: siblingIsProxy ? siblingImpl : null,
+					};
+
 					await databaseService.prisma.contractVerification.upsert({
-						where: { contractAddress: siblingAddress }, // Check if the product with id: 1 exists
-						update: contractVerification,
-						create: contractVerification,
+						where: { contractAddress: siblingAddress },
+						update: siblingRecord,
+						create: siblingRecord,
 					});
 					console.log(
-						'[verifyContract] propagated',
-						contractVerification.contractname,
-						'to sibling',
+						'[verifyContract] auto-verified sibling',
 						siblingAddress,
+						'as',
+						siblingRecord.contractname,
+						siblingIsProxy
+							? `(proxy -> ${siblingImpl})`
+							: '(non-proxy)',
 					);
 
 					rabbitmqService.enqueueData(
