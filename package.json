@@ -29,7 +29,7 @@
     "db:studio": "prisma studio"
   },
   "author": "",
-  "license": "",
+  "license": "MIT",
   "dependencies": {
     "@prisma/client": "^5.0.0",
     "@prisma/extension-read-replicas": "^0.2.2",
